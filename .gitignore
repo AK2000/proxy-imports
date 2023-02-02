@@ -1,0 +1,6 @@
+.python-version
+.venv
+module-store
+site-packages
+proxied-site-packages
+
