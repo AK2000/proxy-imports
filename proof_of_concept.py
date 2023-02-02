@@ -17,6 +17,10 @@ package_path = "proxied-site-packages"
 
 # Adapted from: https://gist.github.com/rmcgibbo/28bcf323ee0a0e482f52339701390f28
 class ProxyImporter(importlib.abc.MetaPathFinder, importlib.abc.Loader):
+
+    _proxied_modules: dict[str, Proxy]
+    _in_create_mode: bool
+
     def __init__(self, proxied_modules: dict[str, Proxy]):
         self._proxied_modules = proxied_modules
         self._in_create_module = False
@@ -32,6 +36,7 @@ class ProxyImporter(importlib.abc.MetaPathFinder, importlib.abc.Loader):
         self._in_create_module = True
 
         from importlib.util import find_spec, module_from_spec
+
         real_spec = importlib.util.find_spec(spec.name)
 
         real_module = module_from_spec(real_spec)
@@ -49,6 +54,10 @@ class ProxyImporter(importlib.abc.MetaPathFinder, importlib.abc.Loader):
         globals()[module.__name__] = module
 
     def find_spec(self, fullname, path=None, target=None):
+
+        # If a Proxy object, untar the directory and save it on disc
+        # NOTE: Python can read tar.gz modules, so maybe we just
+        # save the tar archive to disc instead of untarring
         if fullname in self._proxied_modules:
             tar_str = io.BytesIO(extract(self._proxied_modules[fullname]))
 
@@ -63,10 +72,11 @@ class ProxyImporter(importlib.abc.MetaPathFinder, importlib.abc.Loader):
 
 
 def proxy_module(q: multiprocessing.Queue) -> None:
-    """Reads module and proxies it into the FileStore
+    """Reads module and proxies it into the FileStore.
 
-    Returns:
-        (Proxy) a proxied version of the module
+    Args:
+        q (multiprocessing.Queue): The queue to store the module name
+                                   and its proxy into.
     """
     import numpy as np
 
@@ -85,13 +95,11 @@ def proxy_module(q: multiprocessing.Queue) -> None:
     tar.close()
 
     np_proxy = fs.proxy(np_tar)
-    q.put(('numpy', np_proxy))
+    q.put(("numpy", np_proxy))
 
 
-def extract_proxied_mod(np_proxy: Proxy):
-    pass
-
-def import_module():
+def import_module() -> None:
+    """Imports the desired proxied module and performs desired computation."""
     import numpy as proxynp  # import proxied module and use
 
     assert package_path in inspect.getfile(proxynp), inspect.getfile(
@@ -103,17 +111,21 @@ def import_module():
 
 def main():
     proxied_modules = {}
-    
+
+    # Using multiprocessing here so :py:func:`import_module` does not
+    # have a preloaded copy of the original module
     q = multiprocessing.Queue()
     p = multiprocessing.Process(target=proxy_module, args=(q,))
     p.start()
     key, value = q.get()
     p.join()
-    proxied_modules[key] = value
 
+    # need to pass dictionary of all possible proxied modules
+    # as input to ProxyImporter as the import statement cannot
+    # pass a Proxy
+    proxied_modules[key] = value
     sys.meta_path.insert(0, ProxyImporter(proxied_modules))
 
-    #extract_proxied_mod(mod)
     import_module()
 
 
