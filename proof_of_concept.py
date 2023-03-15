@@ -160,10 +160,25 @@ def import_module(**proxied_modules):
             # NOTE: Python can read tar.gz modules, so maybe we just
             # save the tar archive to disc instead of untarring
             if fullname in self._proxied_modules:
-                tar_str = io.BytesIO(extract(self._proxied_modules[fullname]))
+                try:
+                    # Prevent multiple tasks from extracting proxy
+                    Path(f"{package_path}/{fullname}.tmp").touch(exist_ok=False)
 
-                with tarfile.open(fileobj=tar_str, mode="r|") as f:
-                    f.extractall(path=package_path)
+                    tar_str = io.BytesIO(extract(self._proxied_modules[fullname]))
+
+                    with tarfile.open(fileobj=tar_str, mode="r|") as f:
+                        f.extractall(path=package_path)
+
+                    Path(f"{package_path}/{fullname}_done.tmp").touch()
+
+                except FileExistsError:
+                    # Wait for package to finish extracting before continuing?
+                    while True:
+                        try:
+                            with open(f"{package_path}/{fullname}_done.tmp", "r") as _:
+                                break
+                        except IOError:
+                            time.sleep(3)
 
             if self._in_create_module:
                 return None
