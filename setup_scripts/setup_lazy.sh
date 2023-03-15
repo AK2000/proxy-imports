@@ -1,5 +1,8 @@
 # !/bin/bash
-# module load python
+
+# Needed for perlmutter?
+conda init bash
+source ~/.bashrc
 
 # Run from shared file system
 base_env=`pwd -P`/base_env

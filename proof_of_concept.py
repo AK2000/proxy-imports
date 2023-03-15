@@ -5,6 +5,7 @@ import inspect
 import io
 import tarfile
 import os
+import shutil
 import sys
 import time
 from collections import defaultdict
@@ -24,7 +25,7 @@ import conda.cli.python_api
 from conda.cli.python_api import Commands
 import conda_pack
 
-package_path = "proxied-site-packages"
+package_path = "/dev/shm/proxied-site-packages"
 
 def proxy_module(module_name: str) -> None:
     """Reads module and proxies it into the FileStore.
@@ -75,7 +76,7 @@ def import_module(**kwargs):
         return dict()
 
     elif method == "conda_pack":
-        conda.cli.python_api.run_command(Commands.CREATE, "-n", "newenv", "python=3.9", module_name)
+        conda.cli.python_api.run_command(Commands.CREATE, "--name=newenv", "--file=base_environment.yml", module_name)
         conda_pack.pack(name="newenv")
         code = \
             """
@@ -200,8 +201,9 @@ def cleanup(module_name: str, method: str = "file_system") -> None:
     if method == "conda_pack":
         conda.cli.python_api.run_command(Commands.REMOVE, "-n", "newenv", "--all")
         os.remove("newenv.tar.gz")
+        shutil.rmtree("/dev/shm/local-envs", ignore_errors=True) # Path where environments are unpacked
     elif method == "lazy":
-        pass
+        shutil.rmtree(f"{package_path}", ignore_errors=True)
 
 def make_config(nodes:int = 0, method:str = "file_system"):
     '''
