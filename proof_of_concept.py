@@ -77,7 +77,10 @@ def import_module(**kwargs):
         return dict()
 
     elif method == "conda_pack":
-        conda.cli.python_api.run_command(Commands.CREATE, "--name=newenv", "--file=base_environment.yml", module_name)
+        base_env = os.path.join(os.getcwd(), "base_env")
+        print(base_env)
+        conda.cli.python_api.run_command(Commands.CREATE, "--name=newenv", "--clone", base_env)
+        conda.cli.python_api.run_command(Commands.INSTALL, "-n" "newenv", module_name)
         conda_pack.pack(name="newenv")
         code = \
             """
