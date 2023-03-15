@@ -205,7 +205,7 @@ def import_module(**proxied_modules):
 def cleanup(module_name: str, method: str = "file_system", nodes: int = 1) -> None:
     if method == "conda_pack":
         conda.cli.python_api.run_command(Commands.REMOVE, "-n", f"newenv-{nodes}", "--all")
-        os.remove("newenv-{nodes}.tar.gz")
+        os.remove(f"newenv-{nodes}.tar.gz")
         shutil.rmtree("/dev/shm/local-envs", ignore_errors=True) # Path where environments are unpacked
     elif method == "lazy":
         shutil.rmtree(f"{package_path}", ignore_errors=True)
@@ -250,9 +250,9 @@ def run_tasks(ntasks: int = 1, proxied_modules: dict[str, Proxy] = None) -> dict
                         # Raise the error that was raised during task
                         print(tsk.result())
                     else:
-                        time = tsk.result()
-                        times.append(time)
-                        cumulative_time += time
+                        tsk_time = tsk.result()
+                        times.append(tsk_time)
+                        cumulative_time += tsk_time
                         
                     tsks.pop(itsk)
                     t.update(1)
