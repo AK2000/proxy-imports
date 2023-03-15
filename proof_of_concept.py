@@ -207,7 +207,7 @@ def make_config(nodes:int = 0, method:str = "file_system"):
     '''
     Build a config for an executor.
     '''
-    provider = LocalProvider(worker_init=f"source setup_{method}.sh")
+    provider = LocalProvider(worker_init=f"source setup_scripts/setup_{method}.sh")
     if nodes > 1:
         provider.launcher = parsl.launchers.SrunLauncher(overrides='-K0 -k --slurmd-debug=verbose')
         provider.nodes_per_block = opts.nnod
