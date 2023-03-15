@@ -3,6 +3,7 @@ import faulthandler
 import importlib
 import inspect
 import io
+import json
 import tarfile
 import os
 import shutil
@@ -116,7 +117,7 @@ def import_module(**proxied_modules):
     from proxystore.proxy import Proxy
     import io
 
-    package_path = %s
+    package_path = "%s"
     # Adapted from: https://gist.github.com/rmcgibbo/28bcf323ee0a0e482f52339701390f28
     class ProxyImporter(importlib.abc.MetaPathFinder, importlib.abc.Loader):
 
@@ -126,6 +127,7 @@ def import_module(**proxied_modules):
         def __init__(self, proxied_modules: dict[str, Proxy]):
             self._proxied_modules = proxied_modules
             self._in_create_module = False
+            Path(package_path).mkdir(parents=True, exist_ok=True)
             sys.path.insert(0, package_path)  # add proxied package path to PYTHONPATH
 
         def find_module(self, fullname, path=None):
@@ -212,7 +214,7 @@ def make_config(nodes:int = 0, method:str = "file_system"):
     provider = LocalProvider(worker_init=f"source setup_scripts/setup_{method}.sh")
     if nodes > 1:
         provider.launcher = parsl.launchers.SrunLauncher(overrides='-K0 -k --slurmd-debug=verbose')
-        provider.nodes_per_block = opts.nnod
+        provider.nodes_per_block = nodes
     executor = parsl.HighThroughputExecutor(provider=provider)
 
     config = parsl.config.Config(
