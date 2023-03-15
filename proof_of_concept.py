@@ -54,7 +54,7 @@ def proxy_module(module_name: str) -> None:
     module_proxy = fs.proxy(module_tar)
     return module_proxy
 
-def setup_import(module_name: str, method: str = "file_system") -> dict[str, Proxy]:
+def setup_import(module_name: str, method: str = "file_system", nodes: int = 1) -> dict[str, Proxy]:
     '''
     Create a parsl task that imports the specified module
     Must be done this way instead of inside the task so the code can then
@@ -79,9 +79,9 @@ def import_module(**kwargs):
     elif method == "conda_pack":
         base_env = os.path.join(os.getcwd(), "base_env")
         print(base_env)
-        conda.cli.python_api.run_command(Commands.CREATE, "--name=newenv", "--clone", base_env)
-        conda.cli.python_api.run_command(Commands.INSTALL, "-n" "newenv", module_name)
-        conda_pack.pack(name="newenv")
+        conda.cli.python_api.run_command(Commands.CREATE, f"--name=newenv-{nodes}", "--clone", base_env)
+        conda.cli.python_api.run_command(Commands.INSTALL, "-n" f"newenv-{nodes}", module_name)
+        conda_pack.pack(name=f"newenv-{nodes}")
         code = \
             """
 @parsl.python_app
@@ -202,10 +202,10 @@ def import_module(**proxied_modules):
 
         return proxied_modules
 
-def cleanup(module_name: str, method: str = "file_system") -> None:
+def cleanup(module_name: str, method: str = "file_system", nodes: int = 1) -> None:
     if method == "conda_pack":
-        conda.cli.python_api.run_command(Commands.REMOVE, "-n", "newenv", "--all")
-        os.remove("newenv.tar.gz")
+        conda.cli.python_api.run_command(Commands.REMOVE, "-n", f"newenv-{nodes}", "--all")
+        os.remove("newenv-{nodes}.tar.gz")
         shutil.rmtree("/dev/shm/local-envs", ignore_errors=True) # Path where environments are unpacked
     elif method == "lazy":
         shutil.rmtree(f"{package_path}", ignore_errors=True)
@@ -232,10 +232,11 @@ def run_tasks(ntasks: int = 1, proxied_modules: dict[str, Proxy] = None) -> dict
     tsks = []
     for itsk in range(ntasks):
         tsks.append(import_module(**proxied_modules))
-    launch_time = time.perf_counter()
+    launch_time = time.perf_counter() - start_time
 
     status_counts = defaultdict(int)
     cumulative_time = 0
+    times = []
     tasks_finished = 0
     with tqdm(total=len(tsks)) as t:
         while len(tsks):
@@ -249,18 +250,20 @@ def run_tasks(ntasks: int = 1, proxied_modules: dict[str, Proxy] = None) -> dict
                         # Raise the error that was raised during task
                         print(tsk.result())
                     else:
-                        cumulative_time += tsk.result()
+                        time = tsk.result()
+                        times.append(time)
+                        cumulative_time += time
                         
                     tsks.pop(itsk)
                     t.update(1)
                 else:
                     itsk += 1
-    finish_time = time.perf_counter()
+    finish_time = time.perf_counter() - start_time
 
     results = {
         "ntasks" : ntasks,
         "cumulative_time" : cumulative_time,
-        "start_time": start_time,
+        "times" : times,
         "launch_time": launch_time,
         "end_time": finish_time
     }
@@ -279,7 +282,9 @@ def main():
 
     # Proxy/create tar for importing
     print("Setting up import task")
-    kwargs = setup_import(opts.module, opts.method)
+    tic = time.perf_counter()
+    kwargs = setup_import(opts.module, opts.method, opts.nodes)
+    setup_time = time.perf_counter() - tic
 
     # Setup parsl
     print("Making Parsl config")
@@ -292,12 +297,13 @@ def main():
 
     # Cleanup
     print("Cleaning up run")
-    cleanup(opts.module, opts.method)
+    cleanup(opts.module, opts.method, opts.nodes)
 
     # Write results into file
     results["method"] = opts.method
     results["module"] = opts.module
     results["nodes"] = opts.nodes
+    results["setup"] = setup_time
     with open(opts.output, "a") as fp:
         fp.write(json.dumps(results) + "\n")
 

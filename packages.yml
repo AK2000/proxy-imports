@@ -1,3 +1,6 @@
 dependencies:
   - numpy
   - pandas
+  - pip
+  - pip:
+    - tensorflow

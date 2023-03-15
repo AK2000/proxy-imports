@@ -1,7 +1,7 @@
 dependencies:
   - python=3.10
   - conda
-  - conda-pack
+  - conda-forge::conda-pack=0.7.*
   - pip
   - pip:
     - proxystore

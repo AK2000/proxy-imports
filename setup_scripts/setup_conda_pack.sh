@@ -6,7 +6,7 @@ source ~/.bashrc
 
 package_path="/dev/shm/local-envs"
 package_dir="newenv"
-package_tar="newenv.tar.gz"
+package_tar="newenv-${SLULRM_NNODES}.tar.gz"
 
 # Clean up environment directory
 rm -rdf "${package_path}/${package_dir}"
