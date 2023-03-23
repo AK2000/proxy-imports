@@ -26,7 +26,7 @@ import conda.cli.python_api
 from conda.cli.python_api import Commands
 import conda_pack
 
-from proxy_importer import proxy_module
+from proxy_importer import ProxyImporter, store_module
 
 package_path = "/dev/shm/proxied-site-packages"
 
@@ -78,7 +78,7 @@ def import_module(**kwargs):
         # as input to ProxyImporter as the import statement cannot
         # pass a Proxy
 
-        proxy = proxy_module(module_name)
+        proxy = store_module(module_name)
         proxied_modules = {}
         proxied_modules[module_name] = proxy
         
