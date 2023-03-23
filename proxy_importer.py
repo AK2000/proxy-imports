@@ -13,8 +13,11 @@ from proxystore.proxy import Proxy, extract, is_resolved
 from proxystore.store import Store, get_store, register_store
 from proxystore.connectors.file import FileConnector
 from proxystore.store.utils import resolve_async
+from proxystore.serialize import deserialize
 
-class ProxyModule(Proxy):
+import lazy_object_proxy.slots as lop
+
+class ProxyModule(lop.Proxy):
     def __init__(self, _proxy: Proxy, name: str, package_path: str):
         object.__setattr__(self, '_proxy', _proxy)
         object.__setattr__(self, '_name', None)
@@ -29,7 +32,7 @@ class ProxyModule(Proxy):
         else:
             # Is a package
             _proxy.__factory__.deserializer =  lambda b : self.unpack(b, name)
-            resolve_async(_proxy)
+            resolve_async(_proxy) # Should we move a module before we use it?
             object.__setattr__(self, '__factory__', lambda: self.load_package(name))
 
     @property
@@ -44,7 +47,7 @@ class ProxyModule(Proxy):
         print("Setting attribute:", name)
         if self.__resolved__:
             super().__setattr__(name, value, __setattr__)
-        elif isinstance(value, Proxy):
+        elif isinstance(value, lop.Proxy):
             __setattr__(self, name, value)
             self.submodules[name] = value
         elif name in ["__name__", "__loader__", "__package__", "__spec__", "__path__", "__file__", "__cached__"]:
@@ -65,14 +68,14 @@ class ProxyModule(Proxy):
         def resolve_attr():
             extract(self)
             return getattr(self, name)
-        return Proxy(resolve_attr)
+        return lop.Proxy(resolve_attr)
 
     def unpack(self, b: bytes, name: str) -> None:
         print("Load package called")
         try: # TODO: Make this more robust, i.e. to a process failure
             # Prevent multiple tasks from extracting proxy
             Path(f"{self.package_path}/{name}.tmp").touch(exist_ok=False)
-            tar_str = io.BytesIO(b)
+            tar_str = io.BytesIO(deserialize(b))
             with tarfile.open(fileobj=tar_str, mode="r|") as f:
                 f.extractall(path=self.package_path)
             Path(f"{self.package_path}/{name}_done.tmp").touch()
@@ -183,7 +186,47 @@ class ProxyImporter(importlib.abc.MetaPathFinder, importlib.abc.Loader):
 
         return None
 
-def store_module(module_name: str) -> Proxy:
+class TracingFinder(importlib.abc.MetaPathFinder):
+    _packages: set[str]
+
+    def __init__(self):
+        self._packages = set()
+
+    def find_module(self, fullname, path=None):
+        spec = self.find_spec(fullname, path)
+        if spec is None:
+            return None
+        return spec
+
+    def find_spec(self, fullname, path=None, target=None):
+        package, _, submod = fullname.partition('.')
+        self._packages.add(package)
+        return None
+    
+    def get_packages(self):
+        return self._packages
+
+    def clear(self):
+        self._packages = set()
+    
+
+def serialize(m: ModuleType) -> bytes:
+    p = Path(inspect.getfile(m))
+    module_dir = p.parent.absolute()
+
+    tar = io.BytesIO()
+
+    with tarfile.open(fileobj=tar, mode="w|") as f:
+        f.add(module_dir, arcname=os.path.basename(module_dir))
+
+    # Convert to string so can easily serialize
+    module_tar = tar.getvalue()
+    tar.close()
+
+    print(f"Serialize: {m.__name__}, tar file length: {len(module_tar)}")
+    return module_tar
+
+def store_module(module_name: str, trace: bool = True) -> dict[str, Proxy]:
     """Reads module and proxies it into the FileStore.
 
     Args:
@@ -199,22 +242,30 @@ def store_module(module_name: str) -> Proxy:
         )
         register_store(store)
 
-    def serialize(m: ModuleType) -> bytes:
-        p = Path(inspect.getfile(m))
-        module_dir = p.parent.absolute()
+        store_module.finder = TracingFinder()
+        sys.meta_path.insert(0, store_module.finder)
 
-        tar = io.BytesIO()
-
-        with tarfile.open(fileobj=tar, mode="w|") as f:
-            f.add(module_dir, arcname=os.path.basename(module_dir))
-
-        # Convert to string so can easily serialize
-        module_tar = tar.getvalue()
-        tar.close()
-
-        print("Created tar file, length: ", len(module_tar))
-        return module_tar
-
+    if trace:
+        store_module.finder.clear()
+    
     module = importlib.import_module(module_name)
-    module_proxy = store.proxy(module, serializer=serialize)
-    return module_proxy
+    results = dict()
+    if trace:
+        packages = store_module.finder.get_packages()
+        for module_name in packages:
+            if module_name in sys.builtin_module_names or module_name in sys.stdlib_module_names:
+                print(f"Built in or standard module {module_name} skipped")
+                continue
+            try:
+                module = importlib.import_module(module_name)
+            except:
+                print(f"Could not import {module_name}, skipping")
+                continue
+            
+            module_tar = serialize(module)
+            results[module_name] = store.proxy(module_tar)
+    else:
+        module_tar = serialize(module)
+        results[module_name] = store.proxy(module_tar)
+
+    return results
