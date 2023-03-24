@@ -31,12 +31,9 @@ from proxy_importer import ProxyImporter, store_module
 package_path = "/dev/shm/proxied-site-packages"
 
 def setup_import(module_name: str, method: str = "file_system", nodes: int = 1) -> dict[str, Proxy]:
-    '''
-    Create a parsl task that imports the specified module
-    Must be done this way instead of inside the task so the code can then
-    be analyzed for dependencies.
+    """ Create a parsl task that imports the specified module
+    """
 
-    '''
     if method == "file_system":
         code = \
             """
@@ -106,7 +103,7 @@ def cleanup(module_name: str, method: str = "file_system", nodes: int = 1) -> No
     elif method == "lazy":
         shutil.rmtree(f"{package_path}", ignore_errors=True)
 
-def make_config(nodes:int = 0, method:str = "file_system"):
+def make_config(nodes: int = 0, method: str = "file_system") -> parsl.config.Config:
     '''
     Build a config for an executor.
     '''
@@ -123,7 +120,7 @@ def make_config(nodes:int = 0, method:str = "file_system"):
 
     return config
 
-def run_tasks(ntasks: int = 1, proxied_modules: dict[str, Proxy] = None) -> dict :
+def run_tasks(ntasks: int = 1, proxied_modules: dict[str, Proxy] = None) -> dict[str, float|list]:
     start_time = time.perf_counter()
     tsks = []
     for itsk in range(ntasks):

@@ -1,6 +1,8 @@
+"""Implementation of lazy importing ad moving via proxies"""
 import sys
 import importlib
 from importlib import abc
+from importlib._bootstrap import _ModuleLockManager
 import inspect
 import io
 import os
@@ -18,10 +20,14 @@ from proxystore.serialize import deserialize
 import lazy_object_proxy.slots as lop
 
 class ProxyModule(lop.Proxy):
-    def __init__(self, _proxy: Proxy, name: str, package_path: str):
-        object.__setattr__(self, '_proxy', _proxy)
-        object.__setattr__(self, '_name', None)
+    """ Wraps a proxy of a tar of a module to behave like the proxy of a module
+    Adds the necessary features to avoid resolving the module unnecessarily.
+    """
+
+    def __init__(self, proxy: Proxy, name: str, package_path: str):
         object.__setattr__(self, '__path__', None)
+        object.__setattr__(self, 'proxy', proxy)
+        object.__setattr__(self, 'name', None)
         object.__setattr__(self, "package_path", package_path)
         object.__setattr__(self, "submodules", dict())
 
@@ -31,20 +37,24 @@ class ProxyModule(lop.Proxy):
             object.__setattr__(self, '__factory__', lambda: self.load_module(name))
         else:
             # Is a package
-            _proxy.__factory__.deserializer =  lambda b : self.unpack(b, name)
-            resolve_async(_proxy) # Should we move a module before we use it?
+            proxy.__factory__.deserializer =  lambda b : self.unpack(b, name)
+            resolve_async(proxy) # Should we move a module before we use it?
             object.__setattr__(self, '__factory__', lambda: self.load_package(name))
 
     @property
     def __name__(self):
-        return self._name
+        """ __name__ property needed to overide lop.Proxy"""
+        return self.name
 
     @__name__.setter
     def __name__(self, value):
-        object.__setattr__(self, "_name", value)
+        """ __name__ setter needed to overide lop.Proxy"""
+        object.__setattr__(self, "name", value)
 
     def __setattr__(self, name, value, __setattr__=object.__setattr__):
-        print("Setting attribute:", name)
+        """ Overrides the __setattr__ function of lop.Proxy to avoid resolving the module
+        while the metadata is being initialized
+        """
         if self.__resolved__:
             super().__setattr__(name, value, __setattr__)
         elif isinstance(value, lop.Proxy):
@@ -56,22 +66,20 @@ class ProxyModule(lop.Proxy):
             super().__setattr__(name, value, __setattr__)
 
     def __getattr__(self, name):
+        """ Overrides the __getattr__ function to avoid resolving the proxy at all on get"""
         if self.__resolved__:
             return super().__getattr__(name)
         
         if name in ["__name__", "__loader__", "__package__", "__spec__", "__path__", "__file__", "__cached__"]:
             return object.__getattribute__(self, name)
 
-        # Don't resolve proxy when getting an attribute, instead return proxy
-        # This  handles "from (proxied module) import x" statements lazily
-        print("Creating proxy for:", name)
         def resolve_attr():
             extract(self)
             return getattr(self, name)
         return lop.Proxy(resolve_attr)
 
     def unpack(self, b: bytes, name: str) -> None:
-        print("Load package called")
+        """Unpacks the tar file into the correct place"""
         try: # TODO: Make this more robust, i.e. to a process failure
             # Prevent multiple tasks from extracting proxy
             Path(f"{self.package_path}/{name}.tmp").touch(exist_ok=False)
@@ -81,42 +89,81 @@ class ProxyModule(lop.Proxy):
             Path(f"{self.package_path}/{name}_done.tmp").touch()
 
         except FileExistsError:
-            # Wait for package to finish extracting before continuing?
+            # Wait for package to finish extracting before continuing
             while True:
                 try:
                     with open(f"{self.package_path}/{name}_done.tmp", "r") as _:
                         break
                 except IOError:
                     time.sleep(1)
-        return 1 # This value should(?) not be used, must return some True value
+        return 1
     
     def load_package(self, name: str):
-        extract(self._proxy) # Ensure module is resolved
+        """Factory method for a package"""
+        extract(self.proxy) # Ensure module is resolved
 
         from importlib.util import module_from_spec
         loader = importlib.machinery.SourceFileLoader(name, f"{self.package_path}/{name}/__init__.py")
-        real_spec = importlib.util.spec_from_loader(name, loader)
-        real_module = module_from_spec(real_spec)
+        spec = importlib.util.spec_from_loader(name, loader)
 
-        sys.modules[real_module.__name__] = real_module # TODO: Not sure if this is thread safe
-        self.remove_submodules() # TODO: Really not sure if this is thread safe 
-        importlib.reload(real_module)
+        # FIXME: There seems to be some weirdness around trying to avoid this in the LazyLoader
+        # I can't seem to find anything that talks about this, and I don't know where it is 
+        # documented. This seems to work, so I'm not going to worry about it too much
+        with _ModuleLockManager(spec.__name__):
+            spec._initializing = True
+            module = module_from_spec(spec)
+            sys.modules[module.__name__] = module
 
-        globals()[real_module.__name__] = real_module
-        return real_module
+            self.remove_submodules()
+            spec.loader.exec_module(module)
+            self.add_submodules(module)
+
+            spec._initializing = False
+
+        globals()[module.__name__] = module
+        return module
 
     def remove_submodules(self):
+        """Remove submodules from sys.modules. Since this is a ProxyModule, all
+        must also be proxy modules. If they are called while loading the parent module
+        they will try to resolve the parent module before executing, causing an infinite
+        recursion. If we remove them from sys.module, they can only be accessed as a attribute
+        of the proxy. Reimporting them will result in the actual module being returned.
+        """
         for name, submod in self.submodules.items():
-            if isinstance(submod, ProxyModule):
-                sys.modules.pop(submod.__name__)
-                submod.remove_submodules()
+            sys.modules.pop(submod.__name__)
+            submod.remove_submodules()
+
+    def add_submodules(self, module: ModuleType):
+        """Add submodules of the proxy as attributes of actual module
+        For the case where you 
+            (1) Resolve a module
+            (2) Access without the proxy
+            (3) Access a previously imported (proxied) submodule (w/o) reimporting the submodule
+        
+        i.e:
+
+        ```
+        import scipy as sp # Proxy Module
+        import scipy.sparse # Proxy module as well
+        resolve(sp)
+        ...
+        import scipy as sp # Not a proxy anymore
+        sp.sparse # Module pointing to a proxy
+        ```
+        """
+        for name, submod in self.submodules.items():
+            setattr(module, name, submod)
 
     def load_module(self, name: str) -> ModuleType:
-        print("Load module called")
-        extract(self._proxy)
+        """Factory method for a module which is not a package"""
+        extract(self.proxy)
         
         # This has been removed from sys.modules, so it is safe to call this
+        # Just import the module again, the parent is already resolved
+        # So this should point to the correct thing without a problem
         module = importlib.import_module(name)
+        self.add_submodules(module)
         return module
 
 # Adapted from: https://gist.github.com/rmcgibbo/28bcf323ee0a0e482f52339701390f28
@@ -141,7 +188,6 @@ class ProxyImporter(importlib.abc.MetaPathFinder, importlib.abc.Loader):
 
     def create_module(self, spec):
         self._in_create_module = True
-        print("Create module called", spec.name)
 
         from importlib.util import find_spec
         package, _, submod = spec.name.partition('.')
@@ -162,7 +208,6 @@ class ProxyImporter(importlib.abc.MetaPathFinder, importlib.abc.Loader):
         return None
 
     def exec_module(self, module):
-        print("Exec module called")
         try:
             _ = sys.modules.pop(module.__name__)
         except KeyError:
@@ -171,7 +216,6 @@ class ProxyImporter(importlib.abc.MetaPathFinder, importlib.abc.Loader):
         globals()[module.__name__] = module
 
     def find_spec(self, fullname, path=None, target=None):
-        print(f"Find spec called for module {fullname}")
         if self._in_create_module:
             return None
 
@@ -187,6 +231,14 @@ class ProxyImporter(importlib.abc.MetaPathFinder, importlib.abc.Loader):
         return None
 
 class TracingFinder(importlib.abc.MetaPathFinder):
+    """ Finder to trace the imports of a module.
+
+    Modules already appearing in sys.modules will not appear here.
+    This may (?) be desirable behavior if we assume modules not 
+    part of this trace will either be part of the base environment, or have
+    been imported by another module that was traced and proxied
+    """
+    
     _packages: set[str]
 
     def __init__(self):
@@ -210,7 +262,8 @@ class TracingFinder(importlib.abc.MetaPathFinder):
         self._packages = set()
     
 
-def serialize(m: ModuleType) -> bytes:
+def _serialize_module(m: ModuleType) -> bytes:
+    """ Method used to turn module into serialized bitstring"""
     p = Path(inspect.getfile(m))
     module_dir = p.parent.absolute()
 
@@ -227,10 +280,14 @@ def serialize(m: ModuleType) -> bytes:
     return module_tar
 
 def store_module(module_name: str, trace: bool = True) -> dict[str, Proxy]:
-    """Reads module and proxies it into the FileStore.
+    """Reads module and proxies it into the FileStore, including the
+    dependencies if requested. This is a best effort approach. If a 
+    specific submodule is needed, pass that into this function for more
+    accurate dependency resolution.
 
     Args:
-        module_name (str): the module to proxy
+        module_name (str): the module to proxy.
+        trace (bool): try to determine and include necessary dependents. 
     """
 
     store = get_store("module_store")
@@ -262,7 +319,7 @@ def store_module(module_name: str, trace: bool = True) -> dict[str, Proxy]:
                 print(f"Could not import {module_name}, skipping")
                 continue
             
-            module_tar = serialize(module)
+            module_tar = _serialize_module(module)
             results[module_name] = store.proxy(module_tar)
     else:
         module_tar = serialize(module)
