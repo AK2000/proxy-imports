@@ -109,7 +109,7 @@ class ProxyModule(lop.Proxy):
         # FIXME: There seems to be some weirdness around trying to avoid this in the LazyLoader
         # I can't seem to find anything that talks about this, and I don't know where it is 
         # documented. This seems to work, so I'm not going to worry about it too much
-        with _ModuleLockManager(spec.__name__):
+        with _ModuleLockManager(spec.name):
             spec._initializing = True
             module = module_from_spec(spec)
             sys.modules[module.__name__] = module
