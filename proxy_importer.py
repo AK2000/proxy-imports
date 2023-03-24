@@ -169,12 +169,9 @@ class ProxyModule(lop.Proxy):
 # Adapted from: https://gist.github.com/rmcgibbo/28bcf323ee0a0e482f52339701390f28
 class ProxyImporter(importlib.abc.MetaPathFinder, importlib.abc.Loader):
     _proxied_modules: dict[str, Proxy]
-    _in_create_module: bool
 
     def __init__(self, proxied_modules: dict[str, Proxy], package_path: str):
         self._proxied_modules = proxied_modules
-        self._in_create_module = False
-        self._in_load_proxy = False
         
         Path(package_path).mkdir(parents=True, exist_ok=True)
         sys.path.insert(0, package_path)
@@ -187,24 +184,15 @@ class ProxyImporter(importlib.abc.MetaPathFinder, importlib.abc.Loader):
         return spec
 
     def create_module(self, spec):
-        self._in_create_module = True
-
-        from importlib.util import find_spec
-        package, _, submod = spec.name.partition('.')
-        if submod:
-            real_spec = spec
-        else:
-            real_spec = importlib.util.find_spec(spec.name)
-            
+        package, _, submod = spec.name.partition('.')            
 
         if package in self._proxied_modules:
             proxy = self._proxied_modules[package]
-            proxy = ProxyModule(proxy, real_spec.name, self.package_path)
+            proxy = ProxyModule(proxy, spec.name, self.package_path)
             importlib._bootstrap._init_module_attrs(spec, proxy, override=True)
             self._in_create_module = False
-            return proxy            
-        
-        self._in_create_module = False
+            return proxy
+
         return None
 
     def exec_module(self, module):
@@ -216,14 +204,10 @@ class ProxyImporter(importlib.abc.MetaPathFinder, importlib.abc.Loader):
         globals()[module.__name__] = module
 
     def find_spec(self, fullname, path=None, target=None):
-        if self._in_create_module:
+        if path is not None:
             return None
 
         package, _, submod = fullname.partition('.')
-        if os.path.exists(f"{self.package_path}/{package}_done.tmp"):
-            # If the package already exists in the desired location, import it
-            return None
-
         if package in self._proxied_modules:
             spec = importlib.machinery.ModuleSpec(fullname, self)
             return spec
