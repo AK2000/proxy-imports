@@ -306,7 +306,7 @@ def store_module(module_name: str, trace: bool = True) -> dict[str, Proxy]:
             module_tar = _serialize_module(module)
             results[module_name] = store.proxy(module_tar)
     else:
-        module_tar = serialize(module)
+        module_tar = _serialize_module(module)
         results[module_name] = store.proxy(module_tar)
 
     return results

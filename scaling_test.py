@@ -75,17 +75,18 @@ def import_module(**kwargs):
         # as input to ProxyImporter as the import statement cannot
         # pass a Proxy
 
-        proxy = store_module(module_name)
-        proxied_modules = {}
-        proxied_modules[module_name] = proxy
+        proxied_modules = store_module(module_name, True)
         
         code = \
             """
 @parsl.python_app
 def import_module(**proxied_modules):
     '''Parsl app that imports a module and accesses its name'''
+    import sys
+    import os
+    sys.path.insert(0, os.getcwd())
     from proxy_importer import ProxyImporter
-    sys.meta_path.insert(0, ProxyImporter(proxied_modules, %s))
+    sys.meta_path.insert(0, ProxyImporter(proxied_modules, "%s"))
 
     tic = time.perf_counter()
     import %s as m
