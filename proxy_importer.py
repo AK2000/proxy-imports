@@ -224,9 +224,12 @@ class TracingFinder(importlib.abc.MetaPathFinder):
     """
     
     _packages: set[str]
+    _libraries: set[str]
 
     def __init__(self):
         self._packages = set()
+        self._libraries = set()
+        sys.addaudithook(self.audit_hook)
 
     def find_module(self, fullname, path=None):
         spec = self.find_spec(fullname, path)
@@ -238,13 +241,20 @@ class TracingFinder(importlib.abc.MetaPathFinder):
         package, _, submod = fullname.partition('.')
         self._packages.add(package)
         return None
+
+    def audit_hook(self, event_name, args):
+        """First attempt at finding dynamic lbraries...does not work"""
+        if "dlopen" in event_name:
+            print(event_name, args)
+            print(args[0])
+            self._libraries.add(args[0])
     
     def get_packages(self):
         return self._packages
 
     def clear(self):
         self._packages = set()
-    
+        self._libraries = set()
 
 def _serialize_module(m: ModuleType) -> bytes:
     """ Method used to turn module into serialized bitstring"""
@@ -263,7 +273,7 @@ def _serialize_module(m: ModuleType) -> bytes:
     print(f"Serialize: {m.__name__}, tar file length: {len(module_tar)}")
     return module_tar
 
-def store_module(module_name: str, trace: bool = True) -> dict[str, Proxy]:
+def store_module(module_name: str, trace: bool = True, connector: str = "ucx") -> dict[str, Proxy]:
     """Reads module and proxies it into the FileStore, including the
     dependencies if requested. This is a best effort approach. If a 
     specific submodule is needed, pass that into this function for more
@@ -276,9 +286,16 @@ def store_module(module_name: str, trace: bool = True) -> dict[str, Proxy]:
 
     store = get_store("module_store")
     if store is None:
+        if connector == "file":
+            connector = FileConnector("module-store")
+        elif connector == "ucx":
+            import ucp
+            interface = ucp.get_address(ifname='eth0')
+            connector = UCXConnector(interface, 13337)
+
         store = Store(
             "module_store",
-            FileConnector("module-store"),
+            connector,
             cache_size=16
         )
         register_store(store)
@@ -290,6 +307,13 @@ def store_module(module_name: str, trace: bool = True) -> dict[str, Proxy]:
         store_module.finder.clear()
     
     module = importlib.import_module(module_name)
+
+    # Possible solution for libraries, but seems to be overly inclusive?
+    # from PyInstaller.utils.hooks import conda_support
+    # libraries = conda_support.collect_dynamic_libs("numpy", dependencies=True)
+    # Alternatively, we could probably watch the library path (?) during import 
+    # https://github.com/seb-m/pyinotify
+
     results = dict()
     if trace:
         packages = store_module.finder.get_packages()
