@@ -14,6 +14,7 @@ import time
 from proxystore.proxy import Proxy, extract, is_resolved
 from proxystore.store import Store, get_store, register_store
 from proxystore.connectors.file import FileConnector
+from proxystore.connectors.dim.ucx import reset_ucp, UCXConnector
 from proxystore.store.utils import resolve_async
 from proxystore.serialize import deserialize
 
@@ -38,7 +39,7 @@ class ProxyModule(lop.Proxy):
         else:
             # Is a package
             proxy.__factory__.deserializer =  lambda b : self.unpack(b, name)
-            resolve_async(proxy) # Should we move a module before we use it?
+            # resolve_async(proxy) # Should we move a module before we use it?
             object.__setattr__(self, '__factory__', lambda: self.load_package(name))
 
     @property
@@ -289,9 +290,7 @@ def store_module(module_name: str, trace: bool = True, connector: str = "ucx") -
         if connector == "file":
             connector = FileConnector("module-store")
         elif connector == "ucx":
-            import ucp
-            interface = ucp.get_address(ifname='eth0')
-            connector = UCXConnector(interface, 13337)
+            connector = UCXConnector("nmn0", 13338)
 
         store = Store(
             "module_store",

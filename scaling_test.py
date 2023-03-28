@@ -103,6 +103,9 @@ def cleanup(module_name: str, method: str = "file_system", nodes: int = 1) -> No
         shutil.rmtree("/dev/shm/local-envs", ignore_errors=True) # Path where environments are unpacked
     elif method == "lazy":
         shutil.rmtree(f"{package_path}", ignore_errors=True)
+        from proxystore.store import get_store
+        store = get_store("module_store")
+        store.close()
 
 def make_config(nodes: int = 0, method: str = "file_system") -> parsl.config.Config:
     '''
