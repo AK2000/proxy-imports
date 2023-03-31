@@ -15,6 +15,8 @@ from proxystore.proxy import Proxy, extract, is_resolved
 from proxystore.store import Store, get_store, register_store
 from proxystore.connectors.file import FileConnector
 from proxystore.connectors.dim.ucx import reset_ucp, UCXConnector
+from proxystore.connectors.redis import RedisConnector
+from proxystore.connectors.dim import utils
 from proxystore.store.utils import resolve_async
 from proxystore.serialize import deserialize
 
@@ -246,8 +248,6 @@ class TracingFinder(importlib.abc.MetaPathFinder):
     def audit_hook(self, event_name, args):
         """First attempt at finding dynamic lbraries...does not work"""
         if "dlopen" in event_name:
-            print(event_name, args)
-            print(args[0])
             self._libraries.add(args[0])
     
     def get_packages(self):
@@ -271,10 +271,18 @@ def _serialize_module(m: ModuleType) -> bytes:
     module_tar = tar.getvalue()
     tar.close()
 
+    # Possible solution for libraries, but seems to be overly inclusive?
+    # from PyInstaller.utils.hooks import conda_support
+    # libraries = conda_support.collect_dynamic_libs("numpy", dependencies=True)
+    # Alternatively, we could probably watch the library path (?) during import 
+    # https://github.com/seb-m/pyinotify
+
     print(f"Serialize: {m.__name__}, tar file length: {len(module_tar)}")
     return module_tar
 
-def store_module(module_name: str, trace: bool = True, connector: str = "ucx") -> dict[str, Proxy]:
+# Create a global cached of proxied modules
+proxied_modules = {}
+def store_modules(modules: str | list, trace: bool = True, connector: str = "redis") -> dict[str, Proxy]:
     """Reads module and proxies it into the FileStore, including the
     dependencies if requested. This is a best effort approach. If a 
     specific submodule is needed, pass that into this function for more
@@ -290,7 +298,10 @@ def store_module(module_name: str, trace: bool = True, connector: str = "ucx") -
         if connector == "file":
             connector = FileConnector("module-store")
         elif connector == "ucx":
-            connector = UCXConnector("nmn0", 13338)
+            connector = UCXConnector("hsn0", 13337)
+        elif connector == "redis":
+            host = utils.get_ip_address("hsn0")
+            connector = RedisConnector(host, 0)
 
         store = Store(
             "module_store",
@@ -299,37 +310,40 @@ def store_module(module_name: str, trace: bool = True, connector: str = "ucx") -
         )
         register_store(store)
 
-        store_module.finder = TracingFinder()
-        sys.meta_path.insert(0, store_module.finder)
+        store_modules.finder = TracingFinder()
+        sys.meta_path.insert(0, store_modules.finder)
 
     if trace:
-        store_module.finder.clear()
+        store_modules.finder.clear()
     
-    module = importlib.import_module(module_name)
-
-    # Possible solution for libraries, but seems to be overly inclusive?
-    # from PyInstaller.utils.hooks import conda_support
-    # libraries = conda_support.collect_dynamic_libs("numpy", dependencies=True)
-    # Alternatively, we could probably watch the library path (?) during import 
-    # https://github.com/seb-m/pyinotify
-
     results = dict()
+    if type(modules) != list:
+        modules = [modules]
+
+    for module_name in modules:
+        if trace or module_name not in proxied_modules:
+            module = importlib.import_module(module_name)
+        if module_name not in proxied_modules:
+            module_tar = _serialize_module(module)
+            proxied_modules[module_name] = store.proxy(module_tar)
+        results[module_name] = proxied_modules[module_name]
+
     if trace:
-        packages = store_module.finder.get_packages()
+        packages = store_modules.finder.get_packages()
         for module_name in packages:
             if module_name in sys.builtin_module_names or module_name in sys.stdlib_module_names:
                 print(f"Built in or standard module {module_name} skipped")
                 continue
-            try:
-                module = importlib.import_module(module_name)
-            except:
-                print(f"Could not import {module_name}, skipping")
-                continue
-            
-            module_tar = _serialize_module(module)
-            results[module_name] = store.proxy(module_tar)
-    else:
-        module_tar = _serialize_module(module)
-        results[module_name] = store.proxy(module_tar)
+
+            if module_name not in proxied_modules:
+                try:
+                    module = importlib.import_module(module_name)
+                except:
+                    print(f"Could not import {module_name}, skipping")
+                    continue
+                module_tar = _serialize_module(module)
+                proxied_modules[module_name] = store.proxy(module_tar)
+
+            results[module_name] = proxied_modules[module_name]
 
     return results

@@ -26,11 +26,11 @@ import conda.cli.python_api
 from conda.cli.python_api import Commands
 import conda_pack
 
-from proxy_importer import ProxyImporter, store_module
+from proxy_imports import proxy_transform
 
 package_path = "/dev/shm/proxied-site-packages"
 
-def setup_import(module_name: str, method: str = "file_system", nodes: int = 1) -> dict[str, Proxy]:
+def setup_import(module_name: str, method: str = "file_system", nodes: int = 1) -> None:
     """ Create a parsl task that imports the specified module
     """
 
@@ -47,7 +47,7 @@ def import_module(**kwargs):
     return time.perf_counter() - tic
 """ % (module_name)
         exec(code, globals())
-        return dict()
+        return
 
     elif method == "conda_pack":
         base_env = os.path.join(os.getcwd(), "base_env")
@@ -68,33 +68,21 @@ def import_module(**kwargs):
     return time.perf_counter() - tic
 """ % (module_name)
         exec(code, globals())
-        return dict()
+        return
 
     elif method == "lazy":
-        # need to pass dictionary of all possible proxied modules
-        # as input to ProxyImporter as the import statement cannot
-        # pass a Proxy
-
-        proxied_modules = store_module(module_name, True)
-        
         code = \
             """
 @parsl.python_app
+@proxy_transform(package_path=%s, connector="redis")
 def import_module(**proxied_modules):
     '''Parsl app that imports a module and accesses its name'''
-    import sys
-    import os
-    sys.path.insert(0, os.getcwd())
-    from proxy_importer import ProxyImporter
-    sys.meta_path.insert(0, ProxyImporter(proxied_modules, "%s"))
-
     tic = time.perf_counter()
     import %s as m
     return time.perf_counter() - tic
 """ % (package_path, module_name)
         exec(code, globals())
-
-        return proxied_modules
+        return
 
 def cleanup(module_name: str, method: str = "file_system", nodes: int = 1) -> None:
     if method == "conda_pack":
@@ -124,11 +112,11 @@ def make_config(nodes: int = 0, method: str = "file_system") -> parsl.config.Con
 
     return config
 
-def run_tasks(ntasks: int = 1, proxied_modules: dict[str, Proxy] = None) -> dict[str, float|list]:
+def run_tasks(ntasks: int = 1) -> dict[str, float|list]:
     start_time = time.perf_counter()
     tsks = []
     for itsk in range(ntasks):
-        tsks.append(import_module(**proxied_modules))
+        tsks.append(import_module())
     launch_time = time.perf_counter() - start_time
 
     status_counts = defaultdict(int)
@@ -175,12 +163,14 @@ def main():
     parser.add_argument("--nodes", default=0, type=int, help="Number of nodes")
     parser.add_argument("--method", default="file_system", choices=["conda_pack", "file_system", "lazy"])
     parser.add_argument("--module", default="numpy", help="Module to import inside of parsl task")
+    parser.add_argument("--package_path", default="/dev/shm/proxied-site-packages", help="Path to move modules to on compute nodes")
+    parser.add_argument("--connector", default="file", help="Proxystore connector to use")
     opts = parser.parse_args()
 
     # Proxy/create tar for importing
     print("Setting up import task")
     tic = time.perf_counter()
-    kwargs = setup_import(opts.module, opts.method, opts.nodes)
+    setup_import(opts.module, opts.method, opts.nodes)
     setup_time = time.perf_counter() - tic
 
     # Setup parsl

@@ -2,9 +2,6 @@ dependencies:
   - python=3.10
   - conda
   - conda-forge::conda-pack=0.7.*
-  - conda-forge::ucx-proc=*=cpu
-  - conda-forge::ucx
-  - rapidsai::ucx-py
   - pip
   - pip:
     - proxystore

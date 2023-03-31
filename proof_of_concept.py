@@ -9,25 +9,13 @@ from pathlib import Path
 
 import multiprocessing
 
-from proxy_importer import ProxyImporter, store_module
+from proxy_imports import proxy_transform
 
 package_path = "proxied-site-packages"
 
-
-def get_proxy_module(q: multiprocessing.Queue) -> None:
-    """Reads module and proxies it into the FileStore.
-    Args:
-        q (multiprocessing.Queue): The queue to store the module name
-                                   and its proxy into.
-    """
-    proxied_modules = store_module("numpy", trace=True)
-    q.put(proxied_modules)
-    print("Put proxy module onto queue")
-
-
+@proxy_transform(package_path=package_path, connector="file")
 def import_module() -> None:
     """Imports the desired proxied module and performs desired computation."""
-    # import numpy.linalg as la
     import numpy as proxynp  # import proxied module and use
     from numpy.linalg import solve
 
@@ -45,19 +33,10 @@ def import_module() -> None:
 def main():
     # Using multiprocessing here so :py:func:`import_module` does not
     # have a preloaded copy of the original module
-    multiprocessing.set_start_method('spawn')
-    q = multiprocessing.Queue()
-    p = multiprocessing.Process(target=get_proxy_module, args=(q,))
+    sys.modules.pop("numpy")
+    p = multiprocessing.Process(target=import_module)
     p.start()
-    print("Getting value from queue")
-    proxied_modules = q.get()
-    print("Got value from queue")
     p.join()
-
-
-    sys.meta_path.insert(0, ProxyImporter(proxied_modules, package_path))
-    import_module()
-
 
 if __name__ == "__main__":
     main()
