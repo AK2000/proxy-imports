@@ -13,7 +13,7 @@ from proxy_imports import proxy_transform
 
 package_path = "proxied-site-packages"
 
-@proxy_transform(package_path=package_path, connector="file")
+@proxy_transform(package_path=package_path, connector="redis")
 def import_module() -> None:
     """Imports the desired proxied module and performs desired computation."""
     import numpy as proxynp  # import proxied module and use

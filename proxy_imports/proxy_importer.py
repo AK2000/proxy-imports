@@ -301,7 +301,7 @@ def store_modules(modules: str | list, trace: bool = True, connector: str = "red
             connector = UCXConnector("hsn0", 13337)
         elif connector == "redis":
             host = utils.get_ip_address("hsn0")
-            connector = RedisConnector(host, 0)
+            connector = RedisConnector(host, 6379)
 
         store = Store(
             "module_store",

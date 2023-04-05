@@ -74,7 +74,7 @@ def import_module(**kwargs):
         code = \
             """
 @parsl.python_app
-@proxy_transform(package_path=%s, connector="redis")
+@proxy_transform(package_path="%s", connector="redis")
 def import_module(**proxied_modules):
     '''Parsl app that imports a module and accesses its name'''
     tic = time.perf_counter()
