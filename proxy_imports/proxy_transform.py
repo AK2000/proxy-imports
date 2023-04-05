@@ -33,13 +33,11 @@ def proxy_transform(f=None, connector="redis", package_path="/dev/shm/proxied-si
                     raise ImportError('On {}, imports from the current module are not supported'.format(stmt.module or '.'))
                 imports.add(_strip_dots(stmt.module))
         
-        print(imports)
         proxies = store_modules(list(imports), connector=connector)
         @wraps(func)
         def wrapped(*args: list[Any], proxied_modules: dict[str, Proxy] = proxies, package_path: str = package_path, **kwargs: dict[str, Any]) -> Any:
             import sys
             from .proxy_importer import ProxyImporter
-            print(proxied_modules)
             sys.meta_path.insert(0, ProxyImporter(proxied_modules, package_path))
             return func(*args, **kwargs)
 
