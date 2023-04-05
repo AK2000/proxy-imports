@@ -30,7 +30,7 @@ from proxy_imports import proxy_transform
 
 package_path = "/dev/shm/proxied-site-packages"
 
-def setup_import(module_name: str, method: str = "file_system", nodes: int = 1) -> None:
+def setup_import(module_name: str, method: str = "file_system", nodes: int = 1, connector: str = "redis") -> None:
     """ Create a parsl task that imports the specified module
     """
 
@@ -67,21 +67,30 @@ def import_module(**kwargs):
     import %s as m
     return time.perf_counter() - tic
 """ % (module_name)
-        exec(code, globals())
+        
         return
 
     elif method == "lazy":
         code = \
             """
 @parsl.python_app
-@proxy_transform(package_path="%s", connector="redis")
+@proxy_transform(package_path="%s", connector="%s")
 def import_module(**proxied_modules):
     '''Parsl app that imports a module and accesses its name'''
     tic = time.perf_counter()
     import %s as m
     return time.perf_counter() - tic
-""" % (package_path, module_name)
-        exec(code, globals())
+""" % (package_path, module_name, connector)
+        with tempfile.NamedTemporaryFile(suffix='.py') as tmp:
+            tmp.write(raw.encode())
+            tmp.flush()
+
+            # Now load that file as a module
+            spec = util.spec_from_file_location('tmp', tmp.name)
+            module = util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+        
+        globals()["import_module"] = module.import_module
         return
 
 def cleanup(module_name: str, method: str = "file_system", nodes: int = 1) -> None:
@@ -164,13 +173,13 @@ def main():
     parser.add_argument("--method", default="file_system", choices=["conda_pack", "file_system", "lazy"])
     parser.add_argument("--module", default="numpy", help="Module to import inside of parsl task")
     parser.add_argument("--package_path", default="/dev/shm/proxied-site-packages", help="Path to move modules to on compute nodes")
-    parser.add_argument("--connector", default="file", help="Proxystore connector to use")
+    parser.add_argument("--connector", default="redis", help="Proxystore connector to use")
     opts = parser.parse_args()
 
     # Proxy/create tar for importing
     print("Setting up import task")
     tic = time.perf_counter()
-    setup_import(opts.module, opts.method, opts.nodes)
+    setup_import(opts.module, opts.method, opts.nodes, opts.connector)
     setup_time = time.perf_counter() - tic
 
     # Setup parsl
