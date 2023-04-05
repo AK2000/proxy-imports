@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "proxy_imports"
+authors = [
+    {name = "Alok Kamatar", email = "alokvk2@uchicago.edu"},
+]
+description = "Package to move and lazily import modules using proxystore"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "BSD-3-Clause"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "pyinstaller",
+    "proxystore"
+]
+dynamic = ["version"]
+
+[tool.setuptools]
+packages = ["proxy_imports"]
