@@ -37,7 +37,7 @@ def proxy_transform(f=None, connector="redis", package_path="/dev/shm/proxied-si
         @wraps(func)
         def wrapped(*args: list[Any], proxied_modules: dict[str, Proxy] = proxies, package_path: str = package_path, **kwargs: dict[str, Any]) -> Any:
             import sys
-            from .proxy_importer import ProxyImporter
+            #from .proxy_importer import ProxyImporter
             sys.meta_path.insert(0, ProxyImporter(proxied_modules, package_path))
             return func(*args, **kwargs)
 

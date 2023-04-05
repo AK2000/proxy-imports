@@ -10,8 +10,9 @@ import shutil
 import sys
 import time
 from collections import defaultdict
-from importlib import abc
+import importlib
 from pathlib import Path
+import tempfile
 from tqdm import tqdm
 
 import parsl
@@ -38,7 +39,7 @@ def setup_import(module_name: str, method: str = "file_system", nodes: int = 1, 
         code = \
             """
 @parsl.python_app
-def import_module(**kwargs):
+def import_module():
     '''Parsl app that imports a module and accesses its name'''
     import time
 
@@ -60,7 +61,7 @@ def import_module(**kwargs):
         code = \
             """
 @parsl.python_app
-def import_module(**kwargs):
+def import_module():
     '''Parsl app that imports a module and accesses its name'''
 
     tic = time.perf_counter()
@@ -73,21 +74,24 @@ def import_module(**kwargs):
     elif method == "lazy":
         code = \
             """
+import parsl
+from proxy_imports import proxy_transform
+
 @parsl.python_app
 @proxy_transform(package_path="%s", connector="%s")
-def import_module(**proxied_modules):
+def import_module():
     '''Parsl app that imports a module and accesses its name'''
     tic = time.perf_counter()
     import %s as m
     return time.perf_counter() - tic
-""" % (package_path, module_name, connector)
+""" % (package_path, connector, module_name)
         with tempfile.NamedTemporaryFile(suffix='.py') as tmp:
-            tmp.write(raw.encode())
+            tmp.write(code.encode())
             tmp.flush()
 
             # Now load that file as a module
-            spec = util.spec_from_file_location('tmp', tmp.name)
-            module = util.module_from_spec(spec)
+            spec = importlib.util.spec_from_file_location('tmp', tmp.name)
+            module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
         
         globals()["import_module"] = module.import_module
@@ -189,7 +193,7 @@ def main():
 
     # Run tasks
     print("Running tasks")
-    results = run_tasks(opts.ntsks, kwargs)
+    results = run_tasks(opts.ntsks)
 
     # Cleanup
     print("Cleaning up run")
