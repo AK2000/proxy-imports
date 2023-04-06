@@ -325,6 +325,9 @@ def store_modules(modules: str | list, trace: bool = True, connector: str = "red
         if trace or module_name not in proxied_modules:
             module = importlib.import_module(module_name)
         if module_name not in proxied_modules:
+            if module_name in sys.builtin_module_names or module_name in sys.stdlib_module_names:
+                print(f"Built in or standard module {module_name} skipped")
+                continue
             module_tar = _serialize_module(module)
             proxied_modules[module_name] = store.proxy(module_tar)
         results[module_name] = proxied_modules[module_name]
