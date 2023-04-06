@@ -1,4 +1,5 @@
 """Implementation of lazy importing ad moving via proxies"""
+import ast
 import sys
 import importlib
 from importlib import abc
@@ -347,3 +348,26 @@ def store_modules(modules: str | list, trace: bool = True, connector: str = "red
             results[module_name] = proxied_modules[module_name]
 
     return results
+
+
+def analyze_func_and_create_proxies(func, connector="file"):
+    def _strip_dots(pkg):
+        if pkg.startswith('.'):
+            raise ImportError('On {}, imports from the current module are not supported'.format(pkg))
+        return pkg.split('.')[0]
+
+    src = inspect.getsource(func)
+    code = ast.parse(src)
+    
+    # Adapted from: https://github.com/cooperative-computing-lab/cctools/blob/master/poncho/src/poncho/package_analyze.py
+    imports = set()
+    for stmt in ast.walk(code):
+        if isinstance(stmt, ast.Import):
+            for a in stmt.names:
+                imports.add(_strip_dots(a.name))
+        elif isinstance(stmt, ast.ImportFrom):
+            if stmt.level != 0:
+                raise ImportError('On {}, imports from the current module are not supported'.format(stmt.module or '.'))
+            imports.add(_strip_dots(stmt.module))
+    
+    return store_modules(list(imports), connector=connector)
