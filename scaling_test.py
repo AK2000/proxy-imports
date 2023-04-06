@@ -41,6 +41,8 @@ def setup_import(module_name: str, method: str = "file_system", nodes: int = 1, 
 @parsl.python_app
 def import_module():
     '''Parsl app that imports a module and accesses its name'''
+    import time
+
     tic = time.perf_counter()
     import %s as m
     return time.perf_counter() - tic
@@ -61,6 +63,8 @@ def import_module():
 @parsl.python_app
 def import_module():
     '''Parsl app that imports a module and accesses its name'''
+    import time
+
     tic = time.perf_counter()
     import %s as m
     return time.perf_counter() - tic
@@ -78,6 +82,8 @@ from proxy_imports import proxy_transform
 @proxy_transform(package_path="%s", connector="%s")
 def import_module():
     '''Parsl app that imports a module and accesses its name'''
+    import time
+
     tic = time.perf_counter()
     import %s as m
     return time.perf_counter() - tic
