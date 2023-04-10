@@ -23,6 +23,9 @@ from proxystore.serialize import deserialize
 
 import lazy_object_proxy.slots as lop
 
+from PyInstaller.utils.hooks import collect_dynamic_libs, conda_support
+from PyInstaller.compat import is_pure_conda
+
 class ProxyModule(lop.Proxy):
     """ Wraps a proxy of a tar of a module to behave like the proxy of a module
     Adds the necessary features to avoid resolving the module unnecessarily.
@@ -84,12 +87,26 @@ class ProxyModule(lop.Proxy):
 
     def unpack(self, b: bytes, name: str) -> None:
         """Unpacks the tar file into the correct place"""
+    
         try: # TODO: Make this more robust, i.e. to a process failure
             # Prevent multiple tasks from extracting proxy
             Path(f"{self.package_path}/{name}.tmp").touch(exist_ok=False)
-            tar_str = io.BytesIO(deserialize(b))
+
+            tar_files = deserialize(b)
+
+            tar_str = io.BytesIO(tar_files["module"])
             with tarfile.open(fileobj=tar_str, mode="r|") as f:
                 f.extractall(path=self.package_path)
+            
+            tar_str = io.BytesIO(tar_files["libraries"])
+            library_path = os.path.join(self.package_path, "libraries")
+            with tarfile.open(fileobj=tar_str, mode="r|") as f:
+                for file_ in f:
+                    try:
+                        f.extract(file_, path=library_path)
+                    except IOError as e:
+                        pass
+
             Path(f"{self.package_path}/{name}_done.tmp").touch()
 
         except FileExistsError:
@@ -178,6 +195,13 @@ class ProxyImporter(importlib.abc.MetaPathFinder, importlib.abc.Loader):
         self._proxied_modules = proxied_modules
         
         Path(package_path).mkdir(parents=True, exist_ok=True)
+
+        # Path for shared libraries, must be added to LD_LIBRARY_PATH at startup
+        # This can't be done from inside python because the environment has already
+        # been cached in the linker by this point
+        library_path = os.path.join(package_path, "libraries")
+        Path(library_path).mkdir(exist_ok=True)
+
         sys.path.insert(0, package_path)
         self.package_path = package_path
 
@@ -258,7 +282,7 @@ class TracingFinder(importlib.abc.MetaPathFinder):
         self._packages = set()
         self._libraries = set()
 
-def _serialize_module(m: ModuleType) -> bytes:
+def _serialize_module(m: ModuleType) -> dict[str, bytes]:
     """ Method used to turn module into serialized bitstring"""
     p = Path(inspect.getfile(m))
     module_dir = p.parent.absolute()
@@ -273,13 +297,23 @@ def _serialize_module(m: ModuleType) -> bytes:
     tar.close()
 
     # Possible solution for libraries, but seems to be overly inclusive?
-    # from PyInstaller.utils.hooks import conda_support
-    # libraries = conda_support.collect_dynamic_libs("numpy", dependencies=True)
-    # Alternatively, we could probably watch the library path (?) during import 
-    # https://github.com/seb-m/pyinotify
+    libraries = collect_dynamic_libs(m.__name__)
+    if is_pure_conda:
+        libraries.extend(conda_support.collect_dynamic_libs(m.__name__, dependencies=False))
 
-    print(f"Serialize: {m.__name__}, tar file length: {len(module_tar)}")
-    return module_tar
+    tar = io.BytesIO()
+    with tarfile.open(fileobj=tar, mode="w|") as f:
+        for path, _ in libraries:
+            f.add(path, arcname=os.path.basename(path))
+    # Convert to string so can easily serialize
+    library_tar = tar.getvalue()
+    tar.close()
+
+    print(f"Serialize: {m.__name__}")
+    print(f"\tmodule tar file length: {len(module_tar)}")
+    print(f"\tlibrary tar file length: {len(library_tar)}")
+
+    return {"module": module_tar, "libraries": library_tar}
 
 # Create a global cached of proxied modules
 proxied_modules = {}

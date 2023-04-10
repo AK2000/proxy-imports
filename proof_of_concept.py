@@ -31,9 +31,8 @@ def import_module() -> None:
 
 
 def main():
-    # Using multiprocessing here so :py:func:`import_module` does not
-    # have a preloaded copy of the original module
     sys.modules.pop("numpy")
+    sys.modules.pop("mkl")
     p = multiprocessing.Process(target=import_module)
     p.start()
     p.join()
