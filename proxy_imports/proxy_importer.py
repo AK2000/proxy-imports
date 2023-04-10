@@ -45,7 +45,7 @@ class ProxyModule(lop.Proxy):
         else:
             # Is a package
             proxy.__factory__.deserializer =  lambda b : self.unpack(b, name)
-            # resolve_async(proxy) # Should we move a module before we use it?
+            resolve_async(proxy) # Should we move a module before we use it?
             object.__setattr__(self, '__factory__', lambda: self.load_package(name))
 
     @property

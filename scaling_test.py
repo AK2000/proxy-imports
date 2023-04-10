@@ -31,7 +31,7 @@ from proxy_imports import proxy_transform
 
 package_path = "/dev/shm/proxied-site-packages"
 
-def setup_import(module_name: str, method: str = "file_system", nodes: int = 1, connector: str = "redis") -> None:
+def setup_import(module_name: str, sleep_time: int = 0, method: str = "file_system", nodes: int = 1, connector: str = "redis") -> None:
     """ Create a parsl task that imports the specified module
     """
 
@@ -45,8 +45,9 @@ def import_module():
 
     tic = time.perf_counter()
     import %s as m
+    time.sleep(%d)
     return time.perf_counter() - tic
-""" % (module_name)
+""" % (module_name, sleep_time)
         exec(code, globals())
         return
 
@@ -67,8 +68,9 @@ def import_module():
 
     tic = time.perf_counter()
     import %s as m
+    time.sleep(%d)
     return time.perf_counter() - tic
-""" % (module_name)
+""" % (module_name, sleep_time)
         
         return
 
@@ -86,8 +88,10 @@ def import_module():
 
     tic = time.perf_counter()
     import %s as m
+    time.sleep(%d)
+    m.__wrapped__ # Force resolution of proxy
     return time.perf_counter() - tic
-""" % (package_path, connector, module_name)
+""" % (package_path, connector, module_name, sleep_time)
         with tempfile.NamedTemporaryFile(suffix='.py') as tmp:
             tmp.write(code.encode())
             tmp.flush()
@@ -179,6 +183,7 @@ def main():
     parser.add_argument("--nodes", default=0, type=int, help="Number of nodes")
     parser.add_argument("--method", default="file_system", choices=["conda_pack", "file_system", "lazy"])
     parser.add_argument("--module", default="numpy", help="Module to import inside of parsl task")
+    parser.add_argument("--sleep", default=0, type=int, help="Number of seconds to sleep after import")
     parser.add_argument("--package_path", default="/dev/shm/proxied-site-packages", help="Path to move modules to on compute nodes")
     parser.add_argument("--connector", default="redis", help="Proxystore connector to use")
     opts = parser.parse_args()
@@ -186,7 +191,7 @@ def main():
     # Proxy/create tar for importing
     print("Setting up import task")
     tic = time.perf_counter()
-    setup_import(opts.module, opts.method, opts.nodes, opts.connector)
+    setup_import(opts.module, opts.sleep, opts.method, opts.nodes, opts.connector)
     setup_time = time.perf_counter() - tic
 
     # Setup parsl
