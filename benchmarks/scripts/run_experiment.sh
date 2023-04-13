@@ -9,7 +9,7 @@ for method in "lazy" "file_system" "conda_pack"; do
         for tasks_per_node in 1 2 4 8 16 32 64; do
 	    tasks=$((${tasks_per_node} * ${SLURM_NNODES}))
 	    echo "Running ${tasks} with method ${method} and module ${module}"
-            python scaling_test.py \
+            python benchmarks/scaling_test.py \
                 --ntsks ${tasks} \
                 --nodes ${SLURM_NNODES} \
                 --method ${method} \

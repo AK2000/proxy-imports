@@ -22,3 +22,6 @@ dynamic = ["version"]
 
 [tool.setuptools]
 packages = ["proxy_imports"]
+
+[project.scripts]
+list_imports = "proxy_imports.import_tracer:main"

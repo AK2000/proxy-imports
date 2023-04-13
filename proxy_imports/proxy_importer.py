@@ -23,9 +23,6 @@ from proxystore.serialize import deserialize
 
 import lazy_object_proxy.slots as lop
 
-from PyInstaller.utils.hooks import collect_dynamic_libs, conda_support
-from PyInstaller.compat import is_pure_conda
-
 class ProxyModule(lop.Proxy):
     """ Wraps a proxy of a tar of a module to behave like the proxy of a module
     Adds the necessary features to avoid resolving the module unnecessarily.
@@ -123,8 +120,15 @@ class ProxyModule(lop.Proxy):
         """Factory method for a package"""
         extract(self.proxy) # Ensure module is resolved
 
+        if os.path.isfile(f"{self.package_path}/{name}/__init__.py"):
+            module_path = f"{self.package_path}/{name}/__init__.py"
+        elif os.path.isfile(f"{self.package_path}/{name}.py"):
+            module_path = f"{self.package_path}/{name}.py"
+        else:
+            raise ModuleNotFoundError(f"Could not find file for module {name}")
+
         from importlib.util import module_from_spec
-        loader = importlib.machinery.SourceFileLoader(name, f"{self.package_path}/{name}/__init__.py")
+        loader = importlib.machinery.SourceFileLoader(name, module_path)
         spec = importlib.util.spec_from_loader(name, loader)
 
         # FIXME: There seems to be some weirdness around trying to avoid this in the LazyLoader
@@ -241,170 +245,3 @@ class ProxyImporter(importlib.abc.MetaPathFinder, importlib.abc.Loader):
             return spec
 
         return None
-
-class TracingFinder(importlib.abc.MetaPathFinder):
-    """ Finder to trace the imports of a module.
-
-    Modules already appearing in sys.modules will not appear here.
-    This may (?) be desirable behavior if we assume modules not 
-    part of this trace will either be part of the base environment, or have
-    been imported by another module that was traced and proxied
-    """
-    
-    _packages: set[str]
-    _libraries: set[str]
-
-    def __init__(self):
-        self._packages = set()
-        self._libraries = set()
-        sys.addaudithook(self.audit_hook)
-
-    def find_module(self, fullname, path=None):
-        spec = self.find_spec(fullname, path)
-        if spec is None:
-            return None
-        return spec
-
-    def find_spec(self, fullname, path=None, target=None):
-        package, _, submod = fullname.partition('.')
-        self._packages.add(package)
-        return None
-
-    def audit_hook(self, event_name, args):
-        """First attempt at finding dynamic lbraries...does not work"""
-        if "dlopen" in event_name:
-            self._libraries.add(args[0])
-    
-    def get_packages(self):
-        return self._packages
-
-    def clear(self):
-        self._packages = set()
-        self._libraries = set()
-
-def _serialize_module(m: ModuleType) -> dict[str, bytes]:
-    """ Method used to turn module into serialized bitstring"""
-    p = Path(inspect.getfile(m))
-    module_dir = p.parent.absolute()
-
-    tar = io.BytesIO()
-
-    with tarfile.open(fileobj=tar, mode="w|") as f:
-        f.add(module_dir, arcname=os.path.basename(module_dir))
-
-    # Convert to string so can easily serialize
-    module_tar = tar.getvalue()
-    tar.close()
-
-    # Possible solution for libraries, but seems to be overly inclusive?
-    libraries = collect_dynamic_libs(m.__name__)
-    if is_pure_conda:
-        libraries.extend(conda_support.collect_dynamic_libs(m.__name__, dependencies=False))
-
-    tar = io.BytesIO()
-    with tarfile.open(fileobj=tar, mode="w|") as f:
-        for path, _ in libraries:
-            f.add(path, arcname=os.path.basename(path))
-    # Convert to string so can easily serialize
-    library_tar = tar.getvalue()
-    tar.close()
-
-    print(f"Serialize: {m.__name__}")
-    print(f"\tmodule tar file length: {len(module_tar)}")
-    print(f"\tlibrary tar file length: {len(library_tar)}")
-
-    return {"module": module_tar, "libraries": library_tar}
-
-# Create a global cached of proxied modules
-proxied_modules = {}
-def store_modules(modules: str | list, trace: bool = True, connector: str = "redis") -> dict[str, Proxy]:
-    """Reads module and proxies it into the FileStore, including the
-    dependencies if requested. This is a best effort approach. If a 
-    specific submodule is needed, pass that into this function for more
-    accurate dependency resolution.
-
-    Args:
-        module_name (str): the module to proxy.
-        trace (bool): try to determine and include necessary dependents. 
-    """
-
-    store = get_store("module_store")
-    if store is None:
-        if connector == "file":
-            connector = FileConnector("module-store")
-        elif connector == "ucx":
-            connector = UCXConnector("hsn0", 13337)
-        elif connector == "redis":
-            host = utils.get_ip_address("hsn0")
-            connector = RedisConnector(host, 6379)
-
-        store = Store(
-            "module_store",
-            connector,
-            cache_size=16
-        )
-        register_store(store)
-
-        store_modules.finder = TracingFinder()
-        sys.meta_path.insert(0, store_modules.finder)
-
-    if trace:
-        store_modules.finder.clear()
-    
-    results = dict()
-    if type(modules) != list:
-        modules = [modules]
-
-    for module_name in modules:
-        if trace or module_name not in proxied_modules:
-            module = importlib.import_module(module_name)
-        if module_name not in proxied_modules:
-            if module_name in sys.builtin_module_names or module_name in sys.stdlib_module_names:
-                print(f"Built in or standard module {module_name} skipped")
-                continue
-            module_tar = _serialize_module(module)
-            proxied_modules[module_name] = store.proxy(module_tar)
-        results[module_name] = proxied_modules[module_name]
-
-    if trace:
-        packages = store_modules.finder.get_packages()
-        for module_name in packages:
-            if module_name in sys.builtin_module_names or module_name in sys.stdlib_module_names:
-                print(f"Built in or standard module {module_name} skipped")
-                continue
-
-            if module_name not in proxied_modules:
-                try:
-                    module = importlib.import_module(module_name)
-                except:
-                    print(f"Could not import {module_name}, skipping")
-                    continue
-                module_tar = _serialize_module(module)
-                proxied_modules[module_name] = store.proxy(module_tar)
-
-            results[module_name] = proxied_modules[module_name]
-
-    return results
-
-
-def analyze_func_and_create_proxies(func, connector="file"):
-    def _strip_dots(pkg):
-        if pkg.startswith('.'):
-            raise ImportError('On {}, imports from the current module are not supported'.format(pkg))
-        return pkg.split('.')[0]
-
-    src = inspect.getsource(func)
-    code = ast.parse(src)
-    
-    # Adapted from: https://github.com/cooperative-computing-lab/cctools/blob/master/poncho/src/poncho/package_analyze.py
-    imports = set()
-    for stmt in ast.walk(code):
-        if isinstance(stmt, ast.Import):
-            for a in stmt.names:
-                imports.add(_strip_dots(a.name))
-        elif isinstance(stmt, ast.ImportFrom):
-            if stmt.level != 0:
-                raise ImportError('On {}, imports from the current module are not supported'.format(stmt.module or '.'))
-            imports.add(_strip_dots(stmt.module))
-    
-    return store_modules(list(imports), connector=connector)
