@@ -92,8 +92,15 @@ def store_modules(modules: str | list, trace: bool = True, connector: str = "red
 
     if trace:
         args = ["list_imports"] + modules
+        env = os.environ.copy()
+        env["PYTHONPATH"] = f"{sys.path[0]}:{env.get('PYTHONPATH', '')}"
         # Run as a subprocess to collect full depedencies without messing with module cache
-        completed = subprocess.run(args, capture_output=True, text=True)
+        completed = subprocess.run(
+                args,
+                env=env,
+                capture_output=True, 
+                text=True
+            )
         modules = completed.stdout.split("\n")[:-1]
 
     results = dict()

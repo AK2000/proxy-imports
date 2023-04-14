@@ -41,9 +41,6 @@ def collect_modules_and_dependencies(modules: list):
     dependencies.
     """
 
-    cwd = os.getcwd()
-    sys.path.insert(0, cwd)
-
     finder = TracingFinder()
     sys.meta_path.insert(0, finder)
     for module_name in modules:

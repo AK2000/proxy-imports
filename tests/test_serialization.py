@@ -10,7 +10,6 @@ from proxy_imports import proxy_transform
 
 import test_module
 
-dill.detect.trace(True)
 inc = proxy_transform(test_module.inc, connector="file", package_path = "proxied-site-packages")
 inc = parsl.python_app(inc)
 
