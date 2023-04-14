@@ -21,7 +21,5 @@ dependencies = [
 dynamic = ["version"]
 
 [tool.setuptools]
+script-files = ["proxy_imports/import_tracer.py"]
 packages = ["proxy_imports"]
-
-[project.scripts]
-list_imports = "proxy_imports.import_tracer:main"

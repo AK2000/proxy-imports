@@ -91,7 +91,7 @@ def store_modules(modules: str | list, trace: bool = True, connector: str = "red
         modules = [modules]
 
     if trace:
-        args = ["list_imports"] + modules
+        args = ["import_tracer.py"] + modules
         env = os.environ.copy()
         env["PYTHONPATH"] = f"{sys.path[0]}:{env.get('PYTHONPATH', '')}"
         # Run as a subprocess to collect full depedencies without messing with module cache
@@ -142,8 +142,8 @@ def analyze_func_and_create_proxies(func, connector="file"):
                 raise ImportError('On {}, imports from the current module are not supported'.format(stmt.module or '.'))
             imports.add(_strip_dots(stmt.module))
 
-    func_module = inspect.getmodule(func).__name__
-    if func_module != "__main__":
-        imports.add(_strip_dots(func_module))
+    func_module = inspect.getmodule(func)
+    if func_module and func_module.__name__ != "__main__":
+        imports.add(_strip_dots(func_module.__name__))
     
     return store_modules(list(imports), connector=connector)
