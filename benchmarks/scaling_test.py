@@ -211,6 +211,7 @@ def main():
     results["method"] = opts.method
     results["module"] = opts.module
     results["nodes"] = opts.nodes
+    results["sleep"] = opts.sleep
     results["setup"] = setup_time
     with open(opts.output, "a") as fp:
         fp.write(json.dumps(results) + "\n")
