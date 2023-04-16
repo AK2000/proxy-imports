@@ -20,16 +20,18 @@ from PyInstaller.compat import is_pure_conda
 
 def _serialize_module(m: ModuleType) -> dict[str, bytes]:
     """ Method used to turn module into serialized bitstring"""
-    print(m)
-    try: # Packages always have a __path__ attribute
-        module_dir = Path(m.__path__[0]).absolute()
-    except: # If import is not a package, get file
-        module_dir = inspect.getfile(m)
+    module_dirs = []
+    if hasattr(m, "__path__") and len(m.__path__) > 0:
+        for directory in m.__path__:
+            module_dirs.append(Path(directory).absolute())
+    else: # If import is not a package, get file
+        module_dirs.append(inspect.getfile(m))
 
     tar = io.BytesIO()
 
     with tarfile.open(fileobj=tar, mode="w|") as f:
-        f.add(module_dir, arcname=os.path.basename(module_dir))
+        for module_dir in module_dirs:
+            f.add(module_dir, arcname=os.path.basename(module_dir))
 
     # Convert to string so can easily serialize
     module_tar = tar.getvalue()
