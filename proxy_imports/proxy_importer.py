@@ -15,7 +15,6 @@ import time
 from proxystore.proxy import Proxy, extract, is_resolved
 from proxystore.store import Store, get_store, register_store
 from proxystore.connectors.file import FileConnector
-from proxystore.connectors.dim.ucx import reset_ucp, UCXConnector
 from proxystore.connectors.redis import RedisConnector
 from proxystore.connectors.dim import utils
 from proxystore.store.utils import resolve_async

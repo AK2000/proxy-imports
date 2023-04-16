@@ -12,7 +12,6 @@ from pathlib import Path
 from proxystore.proxy import Proxy
 from proxystore.store import Store, get_store, register_store
 from proxystore.connectors.file import FileConnector
-from proxystore.connectors.dim.ucx import reset_ucp, UCXConnector
 from proxystore.connectors.redis import RedisConnector
 from proxystore.connectors.dim import utils
 
@@ -21,9 +20,10 @@ from PyInstaller.compat import is_pure_conda
 
 def _serialize_module(m: ModuleType) -> dict[str, bytes]:
     """ Method used to turn module into serialized bitstring"""
+    print(m)
     try: # Packages always have a __path__ attribute
         module_dir = Path(m.__path__[0]).absolute()
-    except AttributeError: # If import is not a package, get file
+    except: # If import is not a package, get file
         module_dir = inspect.getfile(m)
 
     tar = io.BytesIO()
@@ -74,8 +74,6 @@ def store_modules(modules: str | list, trace: bool = True, connector: str = "red
     if store is None:
         if connector == "file":
             connector = FileConnector("module-store")
-        elif connector == "ucx":
-            connector = UCXConnector("hsn0", 13337)
         elif connector == "redis":
             host = utils.get_ip_address("hsn0")
             connector = RedisConnector(host, 6379)
