@@ -58,7 +58,7 @@ def import_module():
             conda.cli.python_api.run_command(Commands.INSTALL, "-n" f"newenv-{nodes}", module_name)
         else:
             conda.cli.python_api.run_command(Commands.RUN, "-n" f"newenv-{nodes}", "pip", "install", module_name)
-        conda_pack.pack(name=f"newenv-{nodes}")
+        conda_pack.pack(name=f"newenv-{nodes}", force=True)
         code = \
             """
 @parsl.python_app
@@ -71,7 +71,7 @@ def import_module():
     time.sleep(%d)
     return time.perf_counter() - tic
 """ % (module_name, sleep_time)
-        
+        exec(code, globals()) 
         return
 
     elif method == "lazy":
