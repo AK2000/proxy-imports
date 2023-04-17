@@ -186,6 +186,7 @@ def main():
     parser.add_argument("--sleep", default=0, type=int, help="Number of seconds to sleep after import")
     parser.add_argument("--package_path", default="/dev/shm/proxied-site-packages", help="Path to move modules to on compute nodes")
     parser.add_argument("--connector", default="redis", help="Proxystore connector to use")
+    parser.add_argument("--run_info", default=None, help="Add additional information to results")
     opts = parser.parse_args()
 
     # Proxy/create tar for importing
@@ -213,6 +214,12 @@ def main():
     results["nodes"] = opts.nodes
     results["sleep"] = opts.sleep
     results["setup"] = setup_time
+
+    if opts.run_info is not None:
+        run_info = json.loads(opts.run_info)
+        for key, value in run_info.items():
+            results[key] = value
+
     with open(opts.output, "a") as fp:
         fp.write(json.dumps(results) + "\n")
 
