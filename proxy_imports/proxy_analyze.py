@@ -11,8 +11,6 @@ from pathlib import Path
 
 from proxystore.proxy import Proxy
 from proxystore.store import Store, get_store, register_store
-from proxystore.connectors.file import FileConnector
-from proxystore.connectors.redis import RedisConnector
 from proxystore.connectors.dim import utils
 
 from PyInstaller.utils.hooks import collect_dynamic_libs, conda_support
@@ -29,7 +27,7 @@ def _serialize_module(m: ModuleType) -> dict[str, bytes]:
         
     tar = io.BytesIO()
 
-    with tarfile.open(fileobj=tar, mode="w|") as f:
+    with tarfile.open(fileobj=tar, mode="w:gz") as f:
         f.add(module_path, arcname=os.path.basename(module_path))
 
     # Convert to string so can easily serialize
@@ -45,7 +43,7 @@ def _serialize_module(m: ModuleType) -> dict[str, bytes]:
             print(f"{m.__name__} is not a conda package or was not installed with conda. Cannot find all shared libraries.")
 
     tar = io.BytesIO()
-    with tarfile.open(fileobj=tar, mode="w|") as f:
+    with tarfile.open(fileobj=tar, mode="w:gz") as f:
         for path, _ in libraries:
             f.add(path, arcname=os.path.basename(path))
     # Convert to string so can easily serialize
@@ -74,10 +72,29 @@ def store_modules(modules: str | list, trace: bool = True, connector: str = "red
     store = get_store("module_store")
     if store is None:
         if connector == "file":
+            from proxystore.connectors.file import FileConnector
             connector = FileConnector("module-store")
         elif connector == "redis":
+            from proxystore.connectors.redis import RedisConnector
             host = utils.get_ip_address("hsn0")
             connector = RedisConnector(host, 6379)
+        elif connector == "zmq":
+            from proxystore.connectors.dim.zmq import ZeroMQConnector
+            connector = ZeroMQConnector("hsn0", 5555)
+        elif connector == "multi":
+            from proxystore.connectors.redis import RedisConnector
+            from proxystore.connectors.dim.zmq import ZeroMQConnector
+            from proxystore.connectors.multi import MultiConnector, Policy
+            host = utils.get_ip_address("hsn0")
+            redis_connector = RedisConnector(host, 6379)
+            zmq_connector = ZeroMQConnector("hsn0", 5555)
+
+            policies = {
+                "redis": (redis_connector, Policy(max_size=1048576))
+                "zmq_connector": (zmq_connector, Policy(min_size=1048576))
+            }
+
+            connector = MultiConnector(policies)
 
         store = Store(
             "module_store",
