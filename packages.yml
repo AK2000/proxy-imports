@@ -1,6 +1,15 @@
 dependencies:
+  - conda-forge::rdkit
+  - conda-forge::xtb-python
   - numpy
   - pandas
+  - scikit-learn
+  - conda-forge::py-cpuinfo
+  - anaconda::msgpack-python
+  - psutil
+  - tqdm
+
   - pip
   - pip:
     - tensorflow
+    - ase
