@@ -1,8 +1,7 @@
 # !/bin/bash
 
 # Needed for perlmutter?
-conda init bash
-source ~/.bashrc
+module load conda
 
 # Run from shared file system
 test_env=`pwd -P`/test_env

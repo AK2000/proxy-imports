@@ -1,8 +1,7 @@
 # !/bin/bash
 
 # Needed for perlmutter?
-conda init bash
-source ~/.bashrc
+module load conda
 
 package_path="/dev/shm/local-envs"
 package_dir="newenv"

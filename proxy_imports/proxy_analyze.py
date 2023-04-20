@@ -90,8 +90,8 @@ def store_modules(modules: str | list, trace: bool = True, connector: str = "red
             zmq_connector = ZeroMQConnector("hsn0", 5555)
 
             policies = {
-                "redis": (redis_connector, Policy(max_size=1048576)),
-                "zmq_connector": (zmq_connector, Policy(min_size=1048576))
+                "redis": (redis_connector, Policy(max_size_bytes=1048576)),
+                "zmq_connector": (zmq_connector, Policy(min_size_bytes=1048576))
             }
 
             connector = MultiConnector(policies)
