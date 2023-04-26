@@ -37,7 +37,7 @@ class ProxyModule(lop.Proxy):
         package, _, submod = name.partition('.')
         if submod:
             # Parent must be imported seperately, so we don't have to set the deserializer
-            object.__setattr__(self, '__factory__', lambda: self.load_module(name))
+            object.__setattr__(self, '__factory__', lambda: self.load_module(name, package))
         else:
             # Is a package
             proxy.__factory__.deserializer =  lambda b : self.unpack(b, name)
@@ -179,9 +179,11 @@ class ProxyModule(lop.Proxy):
         for name, submod in self.submodules.items():
             setattr(module, name, submod)
 
-    def load_module(self, name: str) -> ModuleType:
+    def load_module(self, name: str, package_name: str) -> ModuleType:
         """Factory method for a module which is not a package"""
-        extract(self.proxy)
+        package = importlib.import_module(package_name) # In sys.modules, so should be fast
+        if isinstance(package, ProxyModule):
+            package.__wrapped__ # Force resolution of package
         
         # This has been removed from sys.modules, so it is safe to call this
         # Just import the module again, the parent is already resolved

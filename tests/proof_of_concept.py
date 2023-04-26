@@ -6,36 +6,28 @@ import os
 import sys
 from importlib import abc
 from pathlib import Path
-
 import multiprocessing
 
-from proxy_imports import proxy_transform
-
+from proxy_imports import proxy_transform, analyze_func_and_create_proxies, ProxyImporter
 package_path = "proxied-site-packages"
 
-@proxy_transform(package_path=package_path, connector="redis")
-def import_module() -> None:
-    """Imports the desired proxied module and performs desired computation."""
-    import numpy as proxynp  # import proxied module and use
-    from numpy.linalg import solve
-
-    print("Imported library.")
-    assert package_path in inspect.getfile(proxynp), inspect.getfile(
-        proxynp
-    )  # make sure correct numpy is being used
-
-    A = proxynp.random.rand(5,5)
-    b = proxynp.random.rand(5)
-    arr = solve(A, b)
-    print(arr)
-
+def get_transformed_function(queue : multiprocessing.Queue):
+    import test_module
+    proxies = analyze_func_and_create_proxies(test_module.inc, connector="file")
+    queue.put(proxies)
+    return
 
 def main():
-    sys.modules.pop("numpy")
-    sys.modules.pop("mkl")
-    p = multiprocessing.Process(target=import_module)
+    q = multiprocessing.Queue()
+    p = multiprocessing.Process(target=get_transformed_function, args=(q,))
     p.start()
+    proxied_modules = q.get()
     p.join()
+
+    sys.meta_path.insert(0, ProxyImporter(proxied_modules, package_path))
+
+    import test_module
+    print(test_module.inc(1))
 
 if __name__ == "__main__":
     main()
