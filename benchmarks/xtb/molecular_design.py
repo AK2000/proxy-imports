@@ -106,8 +106,6 @@ def training_loop(
         The time it took to run the entire workflow
     """
 
-    print(compute_vertical)
-
     # # Analyze and transform methods
     if method == "lazy":
         compute_vertical_app = python_app(proxy_transform(compute_vertical, package_path=package_path, connector=connector))
@@ -200,7 +198,7 @@ def training_loop(
         # Mark when we finished
         end_time = monotonic()
 
-    return start_time - end_time
+    return end_time - start_time
 
 
 def main():

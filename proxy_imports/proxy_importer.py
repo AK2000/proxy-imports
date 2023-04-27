@@ -27,12 +27,13 @@ class ProxyModule(lop.Proxy):
     Adds the necessary features to avoid resolving the module unnecessarily.
     """
 
-    def __init__(self, proxy: Proxy, name: str, package_path: str):
+    def __init__(self, proxy: Proxy, name: str, package_path: str, proxy_attributes: bool = False):
         object.__setattr__(self, '__path__', None)
         object.__setattr__(self, 'proxy', proxy)
         object.__setattr__(self, 'name', None)
         object.__setattr__(self, "package_path", package_path)
         object.__setattr__(self, "submodules", dict())
+        object.__setattr__(self, "proxy_attributes", proxy_attributes)
 
         package, _, submod = name.partition('.')
         if submod:
@@ -73,13 +74,20 @@ class ProxyModule(lop.Proxy):
         if self.__resolved__:
             return super().__getattr__(name)
         
-        if name in ["__name__", "__loader__", "__package__", "__spec__", "__path__", "__file__", "__cached__"]:
+        if name in ["__name__", "__loader__", "__package__", "__spec__", "__path__", "__cached__"]:
             return object.__getattribute__(self, name)
 
-        def resolve_attr():
-            extract(self)
-            return getattr(self, name)
-        return lop.Proxy(resolve_attr)
+        if self.proxy_attributes:
+            # Occassionally breaks things. Specifically when importing types.
+            # Maybe a way around this using metaclasses: 
+            # https://stackoverflow.com/questions/100003/what-are-metaclasses-in-python
+            # but I haven't been able to figure it out yet
+            def resolve_attr():
+                extract(self)
+                return getattr(self, name)
+            return lop.Proxy(resolve_attr)
+
+        return super().__getattr__(name)
 
     def unpack(self, b: bytes, name: str) -> None:
         """Unpacks the tar file into the correct place"""
