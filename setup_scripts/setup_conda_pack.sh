@@ -3,7 +3,7 @@
 # Needed for perlmutter?
 module load conda
 
-package_path="/dev/shm/local-envs"
+package_path="/tmp/local-envs"
 package_dir="newenv"
 package_tar="newenv-${SLURM_NNODES}.tar.gz"
 
@@ -17,7 +17,7 @@ mkdir -p "${package_path}/${package_dir}"
 tar -xzf "${package_tar}" -C "${package_path}/${package_dir}"
 
 # Activate environment
-conda activate "${package_path}/${package_dir}"
+source "${package_path}/${package_dir}/bin/activate"
 
 # Remove temp files
 conda-unpack

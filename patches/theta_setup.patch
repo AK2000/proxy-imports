@@ -1,0 +1,393 @@
+diff --git a/benchmarks/scaling_test.py b/benchmarks/scaling_test.py
+index 9fe7bd2..11d1c36 100644
+--- a/benchmarks/scaling_test.py
++++ b/benchmarks/scaling_test.py
+@@ -52,7 +52,7 @@ def import_module():
+         return
+ 
+     elif method == "conda_pack":
+-        base_env = os.path.join(os.getcwd(), "base_env")
++        base_env = os.path.join(os.getcwd(), "base_env_theta")
+         conda.cli.python_api.run_command(Commands.CREATE, f"--name=newenv-{nodes}", "--clone", base_env)
+         if module_name not in ["tensorflow"]:
+             conda.cli.python_api.run_command(Commands.INSTALL, "-n" f"newenv-{nodes}", module_name)
+@@ -121,9 +121,15 @@ def make_config(nodes: int = 0, method: str = "file_system") -> parsl.config.Con
+     '''
+     provider = LocalProvider(worker_init=f"source setup_scripts/setup_{method}.sh")
+     if nodes > 1:
+-        provider.launcher = parsl.launchers.SrunLauncher(overrides='-K0 -k --slurmd-debug=verbose')
++        # For Theta
++        provider.launcher = parsl.launchers.AprunLauncher(overrides='-d 64 --cc depth')
+         provider.nodes_per_block = nodes
+-    executor = parsl.HighThroughputExecutor(provider=provider)
++
++    executor = parsl.HighThroughputExecutor(
++        cpu_affinity="block",
++        max_workers=64,
++        provider=provider
++    )
+ 
+     config = parsl.config.Config(
+        executors=[ executor ],
+diff --git a/benchmarks/scripts/run_experiment.sh b/benchmarks/scripts/run_experiment.sh
+index 48ad08f..aa03630 100644
+--- a/benchmarks/scripts/run_experiment.sh
++++ b/benchmarks/scripts/run_experiment.sh
+@@ -8,16 +8,16 @@ for method in "lazy" "file_system" "conda_pack"; do
+     for module in "numpy" "tensorflow"; do
+         for sleep in 0 10; do
+             for tasks_per_node in 1 2 4 8 16 32 64; do
+-                tasks=$((${tasks_per_node} * ${SLURM_NNODES}))
++                tasks=$((${tasks_per_node} * ${COBALT_BLOCKSIZE}))
+                 echo "Running ${tasks} with method ${method} and module ${module}"
+                 python benchmarks/scaling_test.py \
+                     --ntsks ${tasks} \
+-                    --nodes ${SLURM_NNODES} \
++                    --nodes ${COBALT_BLOCKSIZE} \
+                     --method ${method} \
+                     --module ${module} \
+                     --sleep ${sleep} \
+                     --connector file \
+-                    --output results/results-${SLURM_NNODES}.jsonl
++                    --output results/results-${COBALT_BLOCKSIZE}.jsonl
+             done
+         done 
+     done
+diff --git a/benchmarks/scripts/simulated_package_exp.sh b/benchmarks/scripts/simulated_package_exp.sh
+index 54e093b..c32384f 100644
+--- a/benchmarks/scripts/simulated_package_exp.sh
++++ b/benchmarks/scripts/simulated_package_exp.sh
+@@ -5,7 +5,7 @@
+ source setup.sh
+ 
+ tasks_per_node=64
+-tasks=$((${tasks_per_node} * ${SLURM_NNODES}))
++tasks=$((${tasks_per_node} * ${COBALT_BLOCKSIZE}))
+ for package_size in 1 2 3 4 5 6 7 8 9 10; do
+     python benchmarks/create_simulated_package.py ${package_size}
+     cd simulated_package
+@@ -15,7 +15,7 @@ for package_size in 1 2 3 4 5 6 7 8 9 10; do
+         echo "Running ${method} with package size ${package_size}"
+         python benchmarks/scaling_test.py \
+             --ntsks ${tasks} \
+-            --nodes ${SLURM_NNODES} \
++            --nodes ${COBALT_BLOCKSIZE} \
+             --method ${method} \
+             --module sim_pack \
+             --sleep 0 \
+@@ -23,4 +23,4 @@ for package_size in 1 2 3 4 5 6 7 8 9 10; do
+             --run_info "{package_size:${package_size}}" \
+             --output results/results-simulated.jsonl
+     done
+-done
+\ No newline at end of file
++done
+diff --git a/benchmarks/xtb/molecular_design.py b/benchmarks/xtb/molecular_design.py
+index bbabb37..fabcc25 100644
+--- a/benchmarks/xtb/molecular_design.py
++++ b/benchmarks/xtb/molecular_design.py
+@@ -24,12 +24,13 @@ def setup(nodes: int = 0, method: str = "file_system"):
+ 
+     provider = LocalProvider(worker_init=f"source setup_scripts/setup_{method}.sh")
+     if nodes > 1:
+-        provider.launcher = parsl.launchers.SrunLauncher(overrides='-K0 -k --slurmd-debug=verbose')
++        provider.launcher = parsl.launchers.AprunLauncher(overrides='-d 64 --cc depth')
+         provider.nodes_per_block = nodes
+ 
+     executor = parsl.HighThroughputExecutor(
+         provider=provider,
+-        cpu_affinity='block'
++        cpu_affinity='block',
++        max_workers=64
+     )
+ 
+     config = parsl.config.Config(
+@@ -236,4 +237,4 @@ def main():
+         fp.write(json.dumps(results) + "\n")
+ 
+ if __name__ == "__main__":
+-    main()
+\ No newline at end of file
++    main()
+diff --git a/install.sh b/install.sh
+index 157b437..35eb397 100644
+--- a/install.sh
++++ b/install.sh
+@@ -1,9 +1,9 @@
+ # !/bin/bash
+ 
+ # Run from shared file system
+-base_env=`pwd -P`/base_env
++base_env=`pwd -P`/base_env_theta
+ conda env create --prefix ${base_env} --file base_environment.yml
+ 
+-test_env=`pwd -P`/test_env
++test_env=`pwd -P`/test_env_theta
+ conda env create --prefix ${test_env} --file base_environment.yml
+-conda env update --prefix ${test_env} --file packages.yml
+\ No newline at end of file
++conda env update --prefix ${test_env} --file packages.yml
+diff --git a/patches/theta_setup.patch b/patches/theta_setup.patch
+index 74e949c..e69de29 100644
+--- a/patches/theta_setup.patch
++++ b/patches/theta_setup.patch
+@@ -1,194 +0,0 @@
+-diff --git a/benchmarks/scaling_test.py b/benchmarks/scaling_test.py
+-index 9fe7bd2..11d1c36 100644
+---- a/benchmarks/scaling_test.py
+-+++ b/benchmarks/scaling_test.py
+-@@ -52,7 +52,7 @@ def import_module():
+-         return
+- 
+-     elif method == "conda_pack":
+--        base_env = os.path.join(os.getcwd(), "base_env")
+-+        base_env = os.path.join(os.getcwd(), "base_env_theta")
+-         conda.cli.python_api.run_command(Commands.CREATE, f"--name=newenv-{nodes}", "--clone", base_env)
+-         if module_name not in ["tensorflow"]:
+-             conda.cli.python_api.run_command(Commands.INSTALL, "-n" f"newenv-{nodes}", module_name)
+-@@ -121,9 +121,15 @@ def make_config(nodes: int = 0, method: str = "file_system") -> parsl.config.Con
+-     '''
+-     provider = LocalProvider(worker_init=f"source setup_scripts/setup_{method}.sh")
+-     if nodes > 1:
+--        provider.launcher = parsl.launchers.SrunLauncher(overrides='-K0 -k --slurmd-debug=verbose')
+-+        # For Theta
+-+        provider.launcher = parsl.launchers.AprunLauncher(overrides='-d 64 --cc depth')
+-         provider.nodes_per_block = nodes
+--    executor = parsl.HighThroughputExecutor(provider=provider)
+-+
+-+    executor = parsl.HighThroughputExecutor(
+-+        cpu_affinity="block",
+-+        max_workers=64,
+-+        provider=provider
+-+    )
+- 
+-     config = parsl.config.Config(
+-        executors=[ executor ],
+-diff --git a/benchmarks/scripts/run_experiment.sh b/benchmarks/scripts/run_experiment.sh
+-index 48ad08f..aa03630 100644
+---- a/benchmarks/scripts/run_experiment.sh
+-+++ b/benchmarks/scripts/run_experiment.sh
+-@@ -8,16 +8,16 @@ for method in "lazy" "file_system" "conda_pack"; do
+-     for module in "numpy" "tensorflow"; do
+-         for sleep in 0 10; do
+-             for tasks_per_node in 1 2 4 8 16 32 64; do
+--                tasks=$((${tasks_per_node} * ${SLURM_NNODES}))
+-+                tasks=$((${tasks_per_node} * ${COBALT_BLOCKSIZE}))
+-                 echo "Running ${tasks} with method ${method} and module ${module}"
+-                 python benchmarks/scaling_test.py \
+-                     --ntsks ${tasks} \
+--                    --nodes ${SLURM_NNODES} \
+-+                    --nodes ${COBALT_BLOCKSIZE} \
+-                     --method ${method} \
+-                     --module ${module} \
+-                     --sleep ${sleep} \
+-                     --connector file \
+--                    --output results/results-${SLURM_NNODES}.jsonl
+-+                    --output results/results-${COBALT_BLOCKSIZE}.jsonl
+-             done
+-         done 
+-     done
+-diff --git a/benchmarks/scripts/simulated_package_exp.sh b/benchmarks/scripts/simulated_package_exp.sh
+-index 54e093b..c32384f 100644
+---- a/benchmarks/scripts/simulated_package_exp.sh
+-+++ b/benchmarks/scripts/simulated_package_exp.sh
+-@@ -5,7 +5,7 @@
+- source setup.sh
+- 
+- tasks_per_node=64
+--tasks=$((${tasks_per_node} * ${SLURM_NNODES}))
+-+tasks=$((${tasks_per_node} * ${COBALT_BLOCKSIZE}))
+- for package_size in 1 2 3 4 5 6 7 8 9 10; do
+-     python benchmarks/create_simulated_package.py ${package_size}
+-     cd simulated_package
+-@@ -15,7 +15,7 @@ for package_size in 1 2 3 4 5 6 7 8 9 10; do
+-         echo "Running ${method} with package size ${package_size}"
+-         python benchmarks/scaling_test.py \
+-             --ntsks ${tasks} \
+--            --nodes ${SLURM_NNODES} \
+-+            --nodes ${COBALT_BLOCKSIZE} \
+-             --method ${method} \
+-             --module sim_pack \
+-             --sleep 0 \
+-@@ -23,4 +23,4 @@ for package_size in 1 2 3 4 5 6 7 8 9 10; do
+-             --run_info "{package_size:${package_size}}" \
+-             --output results/results-simulated.jsonl
+-     done
+--done
+-\ No newline at end of file
+-+done
+-diff --git a/benchmarks/xtb/molecular_design.py b/benchmarks/xtb/molecular_design.py
+-index bbabb37..fabcc25 100644
+---- a/benchmarks/xtb/molecular_design.py
+-+++ b/benchmarks/xtb/molecular_design.py
+-@@ -24,12 +24,13 @@ def setup(nodes: int = 0, method: str = "file_system"):
+- 
+-     provider = LocalProvider(worker_init=f"source setup_scripts/setup_{method}.sh")
+-     if nodes > 1:
+--        provider.launcher = parsl.launchers.SrunLauncher(overrides='-K0 -k --slurmd-debug=verbose')
+-+        provider.launcher = parsl.launchers.AprunLauncher(overrides='-d 64 --cc depth')
+-         provider.nodes_per_block = nodes
+- 
+-     executor = parsl.HighThroughputExecutor(
+-         provider=provider,
+--        cpu_affinity='block'
+-+        cpu_affinity='block',
+-+        max_workers=64
+-     )
+- 
+-     config = parsl.config.Config(
+-@@ -236,4 +237,4 @@ def main():
+-         fp.write(json.dumps(results) + "\n")
+- 
+- if __name__ == "__main__":
+--    main()
+-\ No newline at end of file
+-+    main()
+-diff --git a/install.sh b/install.sh
+-index 157b437..35eb397 100644
+---- a/install.sh
+-+++ b/install.sh
+-@@ -1,9 +1,9 @@
+- # !/bin/bash
+- 
+- # Run from shared file system
+--base_env=`pwd -P`/base_env
+-+base_env=`pwd -P`/base_env_theta
+- conda env create --prefix ${base_env} --file base_environment.yml
+- 
+--test_env=`pwd -P`/test_env
+-+test_env=`pwd -P`/test_env_theta
+- conda env create --prefix ${test_env} --file base_environment.yml
+--conda env update --prefix ${test_env} --file packages.yml
+-\ No newline at end of file
+-+conda env update --prefix ${test_env} --file packages.yml
+-diff --git a/proxy_imports/proxy_analyze.py b/proxy_imports/proxy_analyze.py
+-index 961e737..ee07475 100644
+---- a/proxy_imports/proxy_analyze.py
+-+++ b/proxy_imports/proxy_analyze.py
+-@@ -76,16 +76,16 @@ def store_modules(modules: str | list, trace: bool = True, connector: str = "red
+-             connector = FileConnector("module-store")
+-         elif connector == "redis":
+-             from proxystore.connectors.redis import RedisConnector
+--            host = utils.get_ip_address("hsn0")
+-+            host = utils.get_ip_address("ipogif0")
+-             connector = RedisConnector(host, 6379)
+-         elif connector == "zmq":
+-             from proxystore.connectors.dim.zmq import ZeroMQConnector
+--            connector = ZeroMQConnector("hsn0", 5555)
+-+            connector = ZeroMQConnector("ipogif0", 5555)
+-         elif connector == "multi":
+-             from proxystore.connectors.redis import RedisConnector
+-             from proxystore.connectors.file import FileConnector
+-             from proxystore.connectors.multi import MultiConnector, Policy
+--            host = utils.get_ip_address("hsn0")
+-+            host = utils.get_ip_address("ipogif0")
+-             redis_connector = RedisConnector(host, 6379)
+-             file_connector = FileConnector("module-store")
+- 
+-diff --git a/setup_scripts/setup_conda_pack.sh b/setup_scripts/setup_conda_pack.sh
+-index c06a0ea..439f06c 100644
+---- a/setup_scripts/setup_conda_pack.sh
+-+++ b/setup_scripts/setup_conda_pack.sh
+-@@ -5,7 +5,7 @@ module load conda
+- 
+- package_path="/dev/shm/local-envs"
+- package_dir="newenv"
+--package_tar="newenv-${SLURM_NNODES}.tar.gz"
+-+package_tar="newenv-${COBALT_BLOCKSIZE}.tar.gz"
+- 
+- # Clean up environment directory
+- rm -rdf "${package_path}/${package_dir}"
+-diff --git a/setup_scripts/setup_file_system.sh b/setup_scripts/setup_file_system.sh
+-index efc2f87..8383a82 100644
+---- a/setup_scripts/setup_file_system.sh
+-+++ b/setup_scripts/setup_file_system.sh
+-@@ -4,5 +4,5 @@
+- module load conda
+- 
+- # Run from shared file system
+--test_env=`pwd -P`/test_env
+--conda activate ${test_env}
+-\ No newline at end of file
+-+test_env=`pwd -P`/test_env_theta
+-+conda activate ${test_env}
+-diff --git a/setup_scripts/setup_lazy.sh b/setup_scripts/setup_lazy.sh
+-index 62e064d..ca70508 100644
+---- a/setup_scripts/setup_lazy.sh
+-+++ b/setup_scripts/setup_lazy.sh
+-@@ -4,7 +4,7 @@
+- module load conda
+- 
+- # Run from shared file system
+--test_env=`pwd -P`/test_env
+-+test_env=`pwd -P`/test_env_theta
+- conda activate ${test_env}
+- 
+--export LD_LIBRARY_PATH="/dev/shm/proxied-site-packages/libraries:$LD_LIBRARY_PATH"
+-\ No newline at end of file
+-+export LD_LIBRARY_PATH="/dev/shm/proxied-site-packages/libraries:$LD_LIBRARY_PATH"
+diff --git a/proxy_imports/proxy_analyze.py b/proxy_imports/proxy_analyze.py
+index 961e737..ee07475 100644
+--- a/proxy_imports/proxy_analyze.py
++++ b/proxy_imports/proxy_analyze.py
+@@ -76,16 +76,16 @@ def store_modules(modules: str | list, trace: bool = True, connector: str = "red
+             connector = FileConnector("module-store")
+         elif connector == "redis":
+             from proxystore.connectors.redis import RedisConnector
+-            host = utils.get_ip_address("hsn0")
++            host = utils.get_ip_address("ipogif0")
+             connector = RedisConnector(host, 6379)
+         elif connector == "zmq":
+             from proxystore.connectors.dim.zmq import ZeroMQConnector
+-            connector = ZeroMQConnector("hsn0", 5555)
++            connector = ZeroMQConnector("ipogif0", 5555)
+         elif connector == "multi":
+             from proxystore.connectors.redis import RedisConnector
+             from proxystore.connectors.file import FileConnector
+             from proxystore.connectors.multi import MultiConnector, Policy
+-            host = utils.get_ip_address("hsn0")
++            host = utils.get_ip_address("ipogif0")
+             redis_connector = RedisConnector(host, 6379)
+             file_connector = FileConnector("module-store")
+ 
+diff --git a/setup_scripts/setup_conda_pack.sh b/setup_scripts/setup_conda_pack.sh
+index 6ff8be9..2d58e7e 100644
+--- a/setup_scripts/setup_conda_pack.sh
++++ b/setup_scripts/setup_conda_pack.sh
+@@ -5,7 +5,7 @@ module load conda
+ 
+ package_path="/tmp/local-envs"
+ package_dir="newenv"
+-package_tar="newenv-${SLURM_NNODES}.tar.gz"
++package_tar="newenv-${COBALT_BLOCKSIZE}.tar.gz"
+ 
+ # Clean up environment directory
+ rm -rdf "${package_path}/${package_dir}"
+diff --git a/setup_scripts/setup_file_system.sh b/setup_scripts/setup_file_system.sh
+index efc2f87..8383a82 100644
+--- a/setup_scripts/setup_file_system.sh
++++ b/setup_scripts/setup_file_system.sh
+@@ -4,5 +4,5 @@
+ module load conda
+ 
+ # Run from shared file system
+-test_env=`pwd -P`/test_env
+-conda activate ${test_env}
+\ No newline at end of file
++test_env=`pwd -P`/test_env_theta
++conda activate ${test_env}
+diff --git a/setup_scripts/setup_lazy.sh b/setup_scripts/setup_lazy.sh
+index 62e064d..ca70508 100644
+--- a/setup_scripts/setup_lazy.sh
++++ b/setup_scripts/setup_lazy.sh
+@@ -4,7 +4,7 @@
+ module load conda
+ 
+ # Run from shared file system
+-test_env=`pwd -P`/test_env
++test_env=`pwd -P`/test_env_theta
+ conda activate ${test_env}
+ 
+-export LD_LIBRARY_PATH="/dev/shm/proxied-site-packages/libraries:$LD_LIBRARY_PATH"
+\ No newline at end of file
++export LD_LIBRARY_PATH="/dev/shm/proxied-site-packages/libraries:$LD_LIBRARY_PATH"
