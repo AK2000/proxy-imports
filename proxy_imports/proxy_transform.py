@@ -14,6 +14,7 @@ def proxy_transform(f=None, connector="redis", package_path="/dev/shm/proxied-si
         proxies = analyze_func_and_create_proxies(wrapped_func, connector=connector)
         payload = dumps(wrapped_func)
 
+        @wraps(wrapped_func, assigned=("__name__", "__qualname__", "__annotations__","__doc__"))
         def wrapped(*args: list[Any], serialized_func: str = payload, proxied_modules: dict[str, Proxy] = proxies, package_path: str = package_path, **kwargs: dict[str, Any]) -> Any:
             import sys
             from dill import loads
