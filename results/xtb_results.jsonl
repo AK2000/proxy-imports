@@ -1,0 +1,8 @@
+{"method": "lazy", "nodes": 128, "initial": 8192, "count": 32768, "batch": 8192, "time": 722.1224939019885}
+{"method": "file_system", "nodes": 128, "initial": 8192, "count": 32768, "batch": 8192, "time": 720.5954726809869}
+{"method": "lazy", "nodes": 128, "initial": 8192, "count": 32768, "batch": 8192, "time": 643.533691747929}
+{"method": "file_system", "nodes": 128, "initial": 8192, "count": 32768, "batch": 8192, "time": 651.0805520310532}
+{"method": "lazy", "nodes": 128, "initial": 8192, "count": 32768, "batch": 8192, "time": 640.3756459649885}
+{"method": "file_system", "nodes": 128, "initial": 8192, "count": 32768, "batch": 8192, "time": 639.3464743930381}
+{"method": "lazy", "nodes": 128, "initial": 8192, "count": 32768, "batch": 8192, "time": 670.6614134140546}
+{"method": "file_system", "nodes": 128, "initial": 8192, "count": 32768, "batch": 8192, "time": 917.527161506936}
