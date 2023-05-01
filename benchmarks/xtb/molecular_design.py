@@ -24,7 +24,7 @@ def setup(nodes: int = 0, method: str = "file_system"):
 
     provider = LocalProvider(worker_init=f"source setup_scripts/setup_{method}.sh")
     if nodes > 1:
-        provider.launcher = parsl.launchers.SrunLauncher(overrides='-K0 -k --slurmd-debug=verbose')
+        provider.launcher = parsl.launchers.SrunLauncher(overrides='-K0 -k')
         provider.nodes_per_block = nodes
 
     executor = parsl.HighThroughputExecutor(
@@ -106,8 +106,6 @@ def training_loop(
         The time it took to run the entire workflow
     """
 
-    rng = np.random.default_rng(12345)
-
     # # Analyze and transform methods
     if method == "lazy":
         compute_vertical_app = python_app(proxy_transform(compute_vertical, package_path=package_path, connector=connector))
@@ -127,7 +125,7 @@ def training_loop(
         
         # Submit with some random guesses
         train_data = []
-        init_mols = search_space.sample(initial_count, random_state=rng)['smiles']
+        init_mols = search_space.sample(initial_count, random_state=12345)['smiles']
         sim_futures = [compute_vertical_app(mol) for mol in init_mols]
         already_ran = set()
         
@@ -146,7 +144,7 @@ def training_loop(
             # Check if the run completed successfully
             if future.exception() is not None:
                 # If it failed, pick a new SMILES string at random and submit it    
-                smiles = search_space.sample(1, random_state=rng).iloc[0]['smiles'] # pick one molecule
+                smiles = search_space.sample(1).iloc[0]['smiles'] # pick one molecule
                 new_future = compute_vertical_app(smiles) # launch a simulation in Parsl
                 sim_futures.append(new_future) # store the Future so we can keep track of it
             else:

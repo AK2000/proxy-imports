@@ -1,4 +1,5 @@
 # !/bin/bash
+module load conda
 
 # Run from shared file system
 base_env=`pwd -P`/base_env

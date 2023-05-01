@@ -54,7 +54,9 @@ def import_module():
     elif method == "conda_pack":
         base_env = os.path.join(os.getcwd(), "base_env")
         conda.cli.python_api.run_command(Commands.CREATE, f"--name=newenv-{nodes}", "--clone", base_env)
-        if module_name not in ["tensorflow"]:
+        if module_name == "sim_pack":
+            conda.cli.python_api.run_command(Commands.RUN, "-n" f"newenv-{nodes}", "pip", "install", "simulated_package/.")
+        elif module_name not in ["tensorflow"]:
             conda.cli.python_api.run_command(Commands.INSTALL, "-n" f"newenv-{nodes}", module_name)
         else:
             conda.cli.python_api.run_command(Commands.RUN, "-n" f"newenv-{nodes}", "pip", "install", module_name)
@@ -121,7 +123,7 @@ def make_config(nodes: int = 0, method: str = "file_system") -> parsl.config.Con
     '''
     provider = LocalProvider(worker_init=f"source setup_scripts/setup_{method}.sh")
     if nodes > 1:
-        provider.launcher = parsl.launchers.SrunLauncher(overrides='-K0 -k --slurmd-debug=verbose')
+        provider.launcher = parsl.launchers.SrunLauncher(overrides='-K0 -k')
         provider.nodes_per_block = nodes
     executor = parsl.HighThroughputExecutor(provider=provider)
 
