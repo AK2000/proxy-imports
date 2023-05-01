@@ -90,8 +90,8 @@ def store_modules(modules: str | list, trace: bool = True, connector: str = "red
             file_connector = FileConnector("module-store")
 
             policies = {
-                "redis": (redis_connector, Policy(max_size_bytes=1048576)),
-                "file_connector": (file_connector, Policy(min_size_bytes=1048576))
+                "redis": (redis_connector, Policy(max_size_bytes=1073741824)),
+                "file_connector": (file_connector, Policy(min_size_bytes=1073741824))
             }
 
             connector = MultiConnector(policies)

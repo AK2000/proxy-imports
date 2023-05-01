@@ -3,7 +3,7 @@
 # Needed for perlmutter?
 module load conda
 
-package_path="/tmp/local-envs"
+package_path="/dev/shm/local-envs"
 package_dir="newenv"
 package_tar="newenv-${SLURM_NNODES}.tar.gz"
 

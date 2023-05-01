@@ -4,10 +4,10 @@
 
 source setup.sh
 
-for method in "lazy" "file_system" "conda_pack"; do
-    for module in "numpy" "tensorflow"; do
-        for sleep in 0 10; do
-            for tasks_per_node in 1 2 4 8 16 32 64; do
+for tasks_per_node in 64 32 16 8 4 2 1; do
+    for module in "tensorflow"; do
+        for sleep in 10; do
+            for method in "lazy" "file_system" "conda_pack"; do
                 tasks=$((${tasks_per_node} * ${SLURM_NNODES}))
                 echo "Running ${tasks} with method ${method} and module ${module}"
                 python benchmarks/scaling_test.py \
@@ -16,7 +16,7 @@ for method in "lazy" "file_system" "conda_pack"; do
                     --method ${method} \
                     --module ${module} \
                     --sleep ${sleep} \
-                    --connector file \
+                    --connector multi \
                     --output results/results-${SLURM_NNODES}.jsonl
             done
         done 
