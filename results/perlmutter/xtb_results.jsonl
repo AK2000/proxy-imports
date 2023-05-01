@@ -1,0 +1,16 @@
+{"method": "lazy", "nodes": 64, "initial": 4096, "count": 16384, "batch": 4096, "time": 76.56777494004928}
+{"method": "file_system", "nodes": 64, "initial": 4096, "count": 16384, "batch": 4096, "time": 77.25584270397667}
+{"method": "lazy", "nodes": 64, "initial": 4096, "count": 16384, "batch": 4096, "time": 71.12056382000446}
+{"method": "file_system", "nodes": 64, "initial": 4096, "count": 16384, "batch": 4096, "time": 61.99937072099419}
+{"method": "lazy", "nodes": 64, "initial": 4096, "count": 16384, "batch": 4096, "time": 72.87424716103124}
+{"method": "file_system", "nodes": 64, "initial": 4096, "count": 16384, "batch": 4096, "time": 64.93600002897438}
+{"method": "lazy", "nodes": 64, "initial": 4096, "count": 16384, "batch": 4096, "time": 99.37114044302143}
+{"method": "file_system", "nodes": 64, "initial": 4096, "count": 16384, "batch": 4096, "time": 62.403770335018635}
+{"method": "lazy", "nodes": 64, "initial": 4096, "count": 16384, "batch": 4096, "time": 74.14161452103872}
+{"method": "file_system", "nodes": 64, "initial": 4096, "count": 16384, "batch": 4096, "time": 70.999999813037}
+{"method": "lazy", "nodes": 64, "initial": 4096, "count": 16384, "batch": 4096, "time": 68.31851929699769}
+{"method": "file_system", "nodes": 64, "initial": 4096, "count": 16384, "batch": 4096, "time": 70.2014842510107}
+{"method": "lazy", "nodes": 64, "initial": 4096, "count": 16384, "batch": 4096, "time": 74.97711590700783}
+{"method": "file_system", "nodes": 64, "initial": 4096, "count": 16384, "batch": 4096, "time": 65.21584461000748}
+{"method": "lazy", "nodes": 64, "initial": 4096, "count": 16384, "batch": 4096, "time": 73.73694531299407}
+{"method": "file_system", "nodes": 64, "initial": 4096, "count": 16384, "batch": 4096, "time": 66.57127722603036}
