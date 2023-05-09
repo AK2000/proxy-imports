@@ -1,5 +1,7 @@
 """Implementation of lazy importing ad moving via proxies"""
 import ast
+from concurrent.futures import Future
+from concurrent.futures import ThreadPoolExecutor
 import sys
 import importlib
 from importlib import abc
@@ -12,15 +14,16 @@ import tarfile
 from types import ModuleType
 import time
 
-from proxystore.proxy import Proxy, extract, is_resolved
+from proxystore.proxy import Proxy, resolve, is_resolved
 from proxystore.store import Store, get_store, register_store
 from proxystore.connectors.file import FileConnector
 from proxystore.connectors.redis import RedisConnector
 from proxystore.connectors.dim import utils
-from proxystore.store.utils import resolve_async
 from proxystore.serialize import deserialize
 
 import lazy_object_proxy.slots as lop
+
+_default_pool = ThreadPoolExecutor()
 
 class ProxyModule(lop.Proxy):
     """ Wraps a proxy of a tar of a module to behave like the proxy of a module
@@ -41,8 +44,8 @@ class ProxyModule(lop.Proxy):
             object.__setattr__(self, '__factory__', lambda: self.load_module(name, package))
         else:
             # Is a package
-            proxy.__factory__.deserializer =  lambda b : self.unpack(b, name)
-            resolve_async(proxy) # Should we move a module before we use it?
+            unpack_future = _default_pool.submit(self.unpack, proxy, name)
+            object.__setattr__(self, "file_unpack", unpack_future)
             object.__setattr__(self, '__factory__', lambda: self.load_package(name))
 
     @property
@@ -83,19 +86,16 @@ class ProxyModule(lop.Proxy):
             # https://stackoverflow.com/questions/100003/what-are-metaclasses-in-python
             # but I haven't been able to figure it out yet
             def resolve_attr():
-                extract(self)
+                resolve(self)
                 return getattr(self, name)
             return lop.Proxy(resolve_attr)
 
         return super().__getattr__(name)
 
-    def unpack(self, b: bytes, name: str) -> None:
+    def unpack(self, proxy: Proxy, name: str) -> None:
         """Unpacks the tar file into the correct place"""
-    
-        try: # TODO: Make this more robust, i.e. to a process failure
-            # Prevent multiple tasks from extracting proxy
-            Path(f"{self.package_path}/{name}.tmp").touch(exist_ok=False)
 
+        def deserialize_and_untar(b: bytes):
             tar_files = deserialize(b)
 
             tar_str = io.BytesIO(tar_files["module"])
@@ -112,6 +112,12 @@ class ProxyModule(lop.Proxy):
                         pass
 
             Path(f"{self.package_path}/{name}_done.tmp").touch()
+    
+        try: # TODO: Make this more robust, i.e. to a process failure
+            # Prevent multiple tasks from extracting proxy
+            Path(f"{self.package_path}/{name}.tmp").touch(exist_ok=False)
+            proxy.__factory__.deserializer =  lambda b : deserialize_and_untar(b, name)
+            resolve(proxy)
 
         except FileExistsError:
             # Wait for package to finish extracting before continuing
@@ -121,11 +127,16 @@ class ProxyModule(lop.Proxy):
                         break
                 except IOError:
                     time.sleep(1)
+                
+                # Prevent deserialization
+                object.__setattr__(self, '__target__', 1)
+
         return 1
     
     def load_package(self, name: str):
         """Factory method for a package"""
-        extract(self.proxy) # Ensure module is resolved
+        if self.file_unpack.exception():
+            raise self.file_unpack.exception()
 
         if os.path.isfile(f"{self.package_path}/{name}/__init__.py"):
             module_path = f"{self.package_path}/{name}/__init__.py"
