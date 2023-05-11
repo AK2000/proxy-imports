@@ -10,8 +10,25 @@ from proxy_imports import proxy_transform
 
 import test_module
 
-inc = proxy_transform(test_module.inc, connector="file", package_path = "proxied-site-packages")
-inc = parsl.python_app(inc)
+# inc = proxy_transform(test_module.inc, connector="file", package_path="proxied-site-packages")
+# inc = parsl.python_app(inc)
+
+
+import pdb; pdb.set_trace()
+@proxy_transform(connector="file", package_path="proxied-site-packages")
+def test_function(a: int):
+    import numpy as np
+    return np.array([a,]) + 1
+
+decorator = proxy_transform(connector="file", package_path="proxied-site-packages")
+def test_function_2(a: int):
+    import numpy as np
+    return np.array([a,]) + 1
+    
+test_function_2 = decorator(test_function_2)
+
+test_function = parsl.python_app(test_function)
+test_function_2 = parsl.python_app(test_function_2)
 
 config = Config(
     executors=[HighThroughputExecutor(
@@ -20,4 +37,6 @@ config = Config(
     )]
 )
 parsl.load(config)
-print(inc(1).result())
+
+print(test_function(1).result())
+print(test_function_2(1).result())

@@ -11,9 +11,14 @@ import multiprocessing
 from proxy_imports import proxy_transform, analyze_func_and_create_proxies, ProxyImporter
 package_path = "proxied-site-packages"
 
+def test_func():
+    import numpy
+    return numpy.random.rand(10)
+
 def get_transformed_function(queue : multiprocessing.Queue):
-    import test_module
-    proxies = analyze_func_and_create_proxies(test_module.inc, connector="file")
+    import chemfunctions
+    # proxies = analyze_func_and_create_proxies(chemfunctions.compute_vertical, connector="file")
+    proxies = analyze_func_and_create_proxies(test_func, connector="file")
     queue.put(proxies)
     return
 
@@ -25,9 +30,9 @@ def main():
     p.join()
 
     sys.meta_path.insert(0, ProxyImporter(proxied_modules, package_path))
-
-    import test_module
-    print(test_module.inc(1))
+    # import chemfunctions
+    # print(chemfunctions.compute_vertical('COC1CCC2CC1C2'))
+    print(test_func())
 
 if __name__ == "__main__":
     main()
