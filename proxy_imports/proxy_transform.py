@@ -5,13 +5,13 @@ from proxystore.proxy import Proxy
 from .proxy_analyze import analyze_func_and_create_proxies
 from dill import dumps # Would rather use pickle or parsl, but breaks when decorator is not used.
 
-def proxy_transform(f=None, connector="redis", package_path="/dev/shm/proxied-site-packages"):
+def proxy_transform(f=None, connector="redis", package_path="/dev/shm/proxied-site-packages", network="hsn0"):
     """Transforms a function to extract all the module imports, proxy the necessary modules
     and returns a function that accepts the proxied module, sets up the imports, and 
     and calls the transformed function.
     """
     def decorator(wrapped_func):
-        proxies = analyze_func_and_create_proxies(wrapped_func, connector=connector)
+        proxies = analyze_func_and_create_proxies(wrapped_func, connector=connector, network=network)
         payload = dumps(wrapped_func)
 
         @wraps(wrapped_func, assigned=("__name__", "__qualname__", "__annotations__","__doc__"))

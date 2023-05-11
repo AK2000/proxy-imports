@@ -58,7 +58,7 @@ def _serialize_module(m: ModuleType) -> dict[str, bytes]:
 
 # Create a global cached of proxied modules
 proxied_modules = {}
-def store_modules(modules: str | list, trace: bool = True, connector: str = "redis") -> dict[str, Proxy]:
+def store_modules(modules: str | list, trace: bool = True, connector: str = "redis", network = "hsn0") -> dict[str, Proxy]:
     """Reads module and proxies it into the FileStore, including the
     dependencies if requested. This is a best effort approach. If a 
     specific submodule is needed, pass that into this function for more
@@ -76,16 +76,16 @@ def store_modules(modules: str | list, trace: bool = True, connector: str = "red
             connector = FileConnector("module-store")
         elif connector == "redis":
             from proxystore.connectors.redis import RedisConnector
-            host = utils.get_ip_address("hsn0")
+            host = utils.get_ip_address(network)
             connector = RedisConnector(host, 6379)
         elif connector == "zmq":
             from proxystore.connectors.dim.zmq import ZeroMQConnector
-            connector = ZeroMQConnector("hsn0", 5555)
+            connector = ZeroMQConnector(network, 5555)
         elif connector == "multi":
             from proxystore.connectors.redis import RedisConnector
             from proxystore.connectors.file import FileConnector
             from proxystore.connectors.multi import MultiConnector, Policy
-            host = utils.get_ip_address("hsn0")
+            host = utils.get_ip_address(network)
             redis_connector = RedisConnector(host, 6379)
             file_connector = FileConnector("module-store")
 
@@ -138,7 +138,7 @@ def store_modules(modules: str | list, trace: bool = True, connector: str = "red
     return results
 
 
-def analyze_func_and_create_proxies(func, connector="file"):
+def analyze_func_and_create_proxies(func, connector="file", network="hsn0"):
     def _strip_dots(pkg):
         if pkg.startswith('.'):
             raise ImportError('On {}, imports from the current module are not supported'.format(pkg))
@@ -162,4 +162,4 @@ def analyze_func_and_create_proxies(func, connector="file"):
     if func_module and func_module.__name__ != "__main__":
         imports.add(_strip_dots(func_module.__name__))
     
-    return store_modules(list(imports), connector=connector)
+    return store_modules(list(imports), connector=connector, network=network)
