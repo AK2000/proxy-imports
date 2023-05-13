@@ -112,11 +112,13 @@ class ProxyModule(lop.Proxy):
                         pass
 
             Path(f"{self.package_path}/{name}_done.tmp").touch()
+
+            return "Done"
     
         try: # TODO: Make this more robust, i.e. to a process failure
             # Prevent multiple tasks from extracting proxy
             Path(f"{self.package_path}/{name}.tmp").touch(exist_ok=False)
-            proxy.__factory__.deserializer =  lambda b : deserialize_and_untar(b, name)
+            proxy.__factory__.deserializer = deserialize_and_untar
             resolve(proxy)
 
         except FileExistsError:
