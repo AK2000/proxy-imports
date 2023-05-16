@@ -16,9 +16,6 @@ import time
 
 from proxystore.proxy import Proxy, resolve, is_resolved
 from proxystore.store import Store, get_store, register_store
-from proxystore.connectors.file import FileConnector
-from proxystore.connectors.redis import RedisConnector
-from proxystore.connectors.dim import utils
 from proxystore.serialize import deserialize
 
 import lazy_object_proxy.slots as lop
