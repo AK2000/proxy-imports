@@ -3,6 +3,7 @@ import pathlib
 from string import Template
 from typing import Optional, Any
 import os
+import importlib
 
 import proxy_imports.default_config as default_config
 

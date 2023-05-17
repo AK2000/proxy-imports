@@ -18,7 +18,7 @@ def test_func():
 def get_transformed_function(queue : multiprocessing.Queue):
     # import chemfunctions
     # proxies = analyze_func_and_create_proxies(chemfunctions.compute_vertical, connector="file")
-    proxies = analyze_func_and_create_proxies(test_func, connector="file")
+    proxies = analyze_func_and_create_proxies(test_func)
     queue.put(proxies)
     return
 
