@@ -2,20 +2,17 @@ import argparse
 from chemfunctions import compute_vertical
 from concurrent.futures import as_completed
 from tqdm import tqdm
-from parsl.executors import HighThroughputExecutor
-from parsl.providers import LocalProvider
-from parsl.providers import SlurmProvider
-from parsl.app.python import PythonApp
-from parsl.app.app import python_app
-from parsl.config import Config
 from time import monotonic
 from random import sample
 from pathlib import Path
 import pandas as pd
 import numpy as np
-import parsl
 import os
 import json
+
+import parsl
+from parsl.app.python import PythonApp
+from parsl.app.app import python_app
 
 from proxy_imports import proxy_transform
 
@@ -214,7 +211,8 @@ def main():
     search_space = pd.read_csv(opts.search_space, delim_whitespace=True)  # Our search space of molecules
 
     # Setup Parsl
-    setup(opts.nodes, opts.method)
+    config = make_config_perlmutter(opts.nodes, opts.method)
+    parsl.load(config)
 
     # Run training loop
     time = training_loop(search_space, opts.initial, opts.count, opts.batch, opts.method)

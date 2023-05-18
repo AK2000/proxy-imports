@@ -16,8 +16,7 @@ import tempfile
 from tqdm import tqdm
 
 import parsl
-from parsl.providers import LocalProvider
-from parsl.providers import SlurmProvider
+from parsl_config import make_config_perlmutter
 
 from proxystore.store.file import FileStore
 from proxystore.proxy import extract
@@ -114,23 +113,6 @@ def cleanup(module_name: str, method: str = "file_system", nodes: int = 1) -> No
         conda.cli.python_api.run_command(Commands.REMOVE, "-n", f"newenv-{nodes}", "--all")
         os.remove(f"newenv-{nodes}.tar.gz")
         shutil.rmtree("/dev/shm/local-envs", ignore_errors=True) # Path where environments are unpacked
-        
-def make_config(nodes: int = 0, method: str = "file_system") -> parsl.config.Config:
-    '''
-    Build a config for an executor.
-    '''
-    provider = LocalProvider(worker_init=f"source setup_scripts/setup_{method}.sh")
-    if nodes > 1:
-        provider.launcher = parsl.launchers.SrunLauncher(overrides='-K0 -k')
-        provider.nodes_per_block = nodes
-    executor = parsl.HighThroughputExecutor(provider=provider)
-
-    config = parsl.config.Config(
-       executors=[ executor ],
-       strategy=None
-    )
-
-    return config
 
 def run_tasks(ntasks: int = 1) -> dict[str, float|list]:
     start_time = time.perf_counter()
@@ -195,7 +177,7 @@ def main():
 
     # Setup parsl
     print("Making Parsl config")
-    config = make_config(opts.nodes, opts.method)
+    config = make_config_perlmutter(opts.nodes, opts.method)
     parsl.load(config)
 
     # Run tasks
