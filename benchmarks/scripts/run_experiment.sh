@@ -16,7 +16,6 @@ for tasks_per_node in 64 32 16 8 4 2 1; do
                     --method ${method} \
                     --module ${module} \
                     --sleep ${sleep} \
-                    --connector multi \
                     --output results/results-${SLURM_NNODES}.jsonl
             done
         done 

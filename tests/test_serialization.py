@@ -15,12 +15,12 @@ import test_module
 
 
 import pdb; pdb.set_trace()
-@proxy_transform(connector="file", package_path="proxied-site-packages")
+@proxy_transform
 def test_function(a: int):
     import numpy as np
     return np.array([a,]) + 1
 
-decorator = proxy_transform(connector="file", package_path="proxied-site-packages")
+decorator = proxy_transform()
 def test_function_2(a: int):
     import numpy as np
     return np.array([a,]) + 1

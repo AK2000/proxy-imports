@@ -16,8 +16,6 @@ def test_func():
     return numpy.random.rand(10)
 
 def get_transformed_function(queue : multiprocessing.Queue):
-    # import chemfunctions
-    # proxies = analyze_func_and_create_proxies(chemfunctions.compute_vertical, connector="file")
     proxies = analyze_func_and_create_proxies(test_func)
     queue.put(proxies)
     return
@@ -30,8 +28,6 @@ def main():
     p.join()
 
     sys.meta_path.insert(0, ProxyImporter(proxied_modules, package_path))
-    # import chemfunctions
-    # print(chemfunctions.compute_vertical('COC1CCC2CC1C2'))
     print(test_func())
 
 if __name__ == "__main__":

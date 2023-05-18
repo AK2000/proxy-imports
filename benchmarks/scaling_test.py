@@ -29,15 +29,11 @@ import conda_pack
 
 from proxy_imports import proxy_transform
 
-package_path = "/dev/shm/proxied-site-packages"
-
 def setup_import(
             module_name: str, 
             sleep_time: int = 0,
             method: str = "file_system",
-            nodes: int = 1,
-            connector: str = "redis",
-            network: str = "hsn0"
+            nodes: int = 1
         ) -> None:
     """ Create a parsl task that imports the specified module
     """
@@ -90,7 +86,7 @@ import parsl
 from proxy_imports import proxy_transform
 
 @parsl.python_app
-@proxy_transform(package_path="%s", connector="%s", network="%s")
+@proxy_transform
 def import_module():
     '''Parsl app that imports a module and accesses its name'''
     import time
@@ -100,7 +96,7 @@ def import_module():
     time.sleep(%d)
     m.__wrapped__ # Force resolution of proxy
     return time.perf_counter() - tic
-""" % (package_path, connector, network, module_name, sleep_time)
+""" % (module_name, sleep_time)
         with tempfile.NamedTemporaryFile(suffix='.py') as tmp:
             tmp.write(code.encode())
             tmp.flush()
@@ -118,12 +114,7 @@ def cleanup(module_name: str, method: str = "file_system", nodes: int = 1) -> No
         conda.cli.python_api.run_command(Commands.REMOVE, "-n", f"newenv-{nodes}", "--all")
         os.remove(f"newenv-{nodes}.tar.gz")
         shutil.rmtree("/dev/shm/local-envs", ignore_errors=True) # Path where environments are unpacked
-    elif method == "lazy":
-        shutil.rmtree(f"{package_path}", ignore_errors=True)
-        from proxystore.store import get_store
-        store = get_store("module_store")
-        store.close()
-
+        
 def make_config(nodes: int = 0, method: str = "file_system") -> parsl.config.Config:
     '''
     Build a config for an executor.
@@ -193,16 +184,13 @@ def main():
     parser.add_argument("--method", default="file_system", choices=["conda_pack", "file_system", "lazy"])
     parser.add_argument("--module", default="numpy", help="Module to import inside of parsl task")
     parser.add_argument("--sleep", default=0, type=int, help="Number of seconds to sleep after import")
-    parser.add_argument("--package_path", default="/dev/shm/proxied-site-packages", help="Path to move modules to on compute nodes")
-    parser.add_argument("--connector", default="redis", help="Proxystore connector to use")
-    parser.add_argument("--network", default="hsn0", help="Network interface to use for communication")
     parser.add_argument("--run_info", default=None, help="Add additional information to results")
     opts = parser.parse_args()
 
     # Proxy/create tar for importing
     print("Setting up import task")
     tic = time.perf_counter()
-    setup_import(opts.module, opts.sleep, opts.method, opts.nodes, opts.connector, opts.network)
+    setup_import(opts.module, opts.sleep, opts.method, opts.nodes)
     setup_time = time.perf_counter() - tic
 
     # Setup parsl
