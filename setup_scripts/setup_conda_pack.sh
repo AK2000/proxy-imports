@@ -5,7 +5,7 @@ module load conda
 
 package_path="/dev/shm/local-envs"
 package_dir="newenv"
-package_tar="newenv-${SLURM_NNODES}.tar.gz"
+package_tar="newenv-${BLOCKSIZE}.tar.gz"
 
 # Clean up environment directory
 rm -rdf "${package_path}/${package_dir}"

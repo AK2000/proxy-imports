@@ -3,6 +3,7 @@
 # Script to run all experiments on a single allocation
 
 source setup.sh
+export BLOCKSIZE=${SLURM_NNODES}
 
 for tasks_per_node in 64 32 16 8 4 2 1; do
     for module in "tensorflow"; do

@@ -3,6 +3,7 @@
 # Script to run all experiments on a single allocation
 
 source setup.sh
+export BLOCKSIZE=${SLURM_NNODES}
 
 tasks_per_node=64
 tasks=$((${tasks_per_node} * ${SLURM_NNODES}))

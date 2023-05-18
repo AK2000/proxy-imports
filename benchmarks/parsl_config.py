@@ -1,6 +1,5 @@
 import parsl
 from parsl.providers import LocalProvider
-from parsl.providers import SlurmProvider
 
 def make_config_perlmutter(nodes: int = 0, method: str = "file_system") -> parsl.config.Config:
     '''
