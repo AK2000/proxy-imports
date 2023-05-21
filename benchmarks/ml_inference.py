@@ -37,11 +37,13 @@ from datasets import load_dataset
 def inference(model_name, dataset_name, start, end):
     import transformers
     from datasets import load_dataset
-    from transformers.pipelines.base import KeyDataset
-    data = datasets.load_dataset(dataset_name, split=f"test[{start}%:{end}%]")
+    from transformers.pipelines.pt_utils import KeyDataset
+    data = load_dataset(dataset_name, split=f"test[{start}%:{end}%]")
 
-    pipe = transformers.pipeline("sentiment-analysis", model=model, tokenizer=tokenizer)
-    results = [out for out in pipe(transformers.pipelines.base.KeyDataset(data, "text"), batch_size=8, truncation="only_first")]
+    pipe = transformers.pipeline("text-classification")
+    pipe("Test review")
+    data = KeyDataset(data, "text")
+    results = [out for out in pipe(data, batch_size=8, truncation="only_first")]
     return results
 
 @parsl.python_app
@@ -50,7 +52,7 @@ def inference_transformed(model_name, dataset_name, start, end):
     import transformers
     from datasets import load_dataset
     from transformers.pipelines.base import KeyDataset
-    data = datasets.load_dataset(dataset_name, split=f"test[{start}%:{end}%]")
+    data = load_dataset(dataset_name, split=f"test[{start}%:{end}%]")
 
     pipe = transformers.pipeline("sentiment-analysis", model=model, tokenizer=tokenizer)
     results = [out for out in pipe(transformers.pipelines.base.KeyDataset(data, "text"), batch_size=8, truncation="only_first")]
