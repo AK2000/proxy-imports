@@ -2,20 +2,17 @@ import argparse
 from chemfunctions import compute_vertical
 from concurrent.futures import as_completed
 from tqdm import tqdm
-from parsl.executors import HighThroughputExecutor
-from parsl.providers import LocalProvider
-from parsl.providers import SlurmProvider
-from parsl.app.python import PythonApp
-from parsl.app.app import python_app
-from parsl.config import Config
 from time import monotonic
 from random import sample
 from pathlib import Path
 import pandas as pd
 import numpy as np
-import parsl
 import os
 import json
+
+import parsl
+from parsl.app.python import PythonApp
+from parsl.app.app import python_app
 
 from proxy_imports import proxy_transform
 
@@ -90,10 +87,7 @@ def training_loop(
             initial_count: int = 8, 
             search_count: int = 64, 
             batch_size: int = 4,
-            method: str = "file_system",
-            package_path: str = "/dev/shm/proxied-site-packages",
-            connector: str = "multi",
-            network: str = "hsn0"
+            method: str = "file_system"
         ):
     """ Run the active learning loop
     Args:
@@ -109,10 +103,10 @@ def training_loop(
 
     # # Analyze and transform methods
     if method == "lazy":
-        compute_vertical_app = python_app(proxy_transform(compute_vertical, package_path=package_path, connector=connector, network=network))
-        train_model_app = python_app(proxy_transform(train_model, package_path=package_path, connector=connector, network=network))
-        run_model_app = python_app(proxy_transform(run_model, package_path=package_path, connector=connector, network=network))
-        combine_inferences_app = python_app(proxy_transform(combine_inferences, package_path=package_path, connector=connector, network=network))
+        compute_vertical_app = python_app(proxy_transform(compute_vertical))
+        train_model_app = python_app(proxy_transform(train_model))
+        run_model_app = python_app(proxy_transform(run_model))
+        combine_inferences_app = python_app(proxy_transform(combine_inferences))
     else:
         # Create Parsl Apps
         compute_vertical_app = python_app(compute_vertical)
@@ -217,7 +211,8 @@ def main():
     search_space = pd.read_csv(opts.search_space, delim_whitespace=True)  # Our search space of molecules
 
     # Setup Parsl
-    setup(opts.nodes, opts.method)
+    config = make_config_perlmutter(opts.nodes, opts.method)
+    parsl.load(config)
 
     # Run training loop
     time = training_loop(search_space, opts.initial, opts.count, opts.batch, opts.method)

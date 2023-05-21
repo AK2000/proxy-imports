@@ -3,6 +3,7 @@
 # Script to run all experiments on a single allocation
 
 source setup.sh
+export BLOCKSIZE=${SLURM_NNODES}
 
 tasks_per_node=64
 tasks=$((${tasks_per_node} * ${SLURM_NNODES}))
@@ -19,7 +20,6 @@ for package_size in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
             --method ${method} \
             --module sim_pack \
             --sleep 0 \
-            --connector redis \
             --run_info {\"package_size\":${package_size}} \
             --output results/results-simulated.jsonl
     done
