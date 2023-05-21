@@ -7,7 +7,10 @@ import subprocess
 import sys
 import tarfile
 from types import ModuleType
+from typing import Optional, Any, Union
 from pathlib import Path
+
+from.proxy_config import read_config
 
 from proxystore.proxy import Proxy
 from proxystore.store import Store, get_store, register_store
@@ -56,9 +59,24 @@ def _serialize_module(m: ModuleType) -> dict[str, bytes]:
 
     return {"module": module_tar, "libraries": library_tar}
 
+def load_config(config: Optional[Union[dict[str, Any], str]] = None):
+    if config is None or type(config) == str:
+        config = read_config(config)
+    return config
+
+def create_store_from_config(ps_config: dict[str, Any]) -> Store:
+    name = ps_config["name"]
+    store = get_store(name)
+
+    if store is None:
+        store = Store.from_config(ps_config)
+        register_store(store)
+
+    return store
+
 # Create a global cached of proxied modules
 proxied_modules = {}
-def store_modules(modules: str | list, trace: bool = True, connector: str = "redis", network = "hsn0") -> dict[str, Proxy]:
+def store_modules(modules: str | list, trace: bool = True, config: Optional[Union[dict[str, Any], str]] = None) -> dict[str, Proxy]:
     """Reads module and proxies it into the FileStore, including the
     dependencies if requested. This is a best effort approach. If a 
     specific submodule is needed, pass that into this function for more
@@ -68,40 +86,8 @@ def store_modules(modules: str | list, trace: bool = True, connector: str = "red
         module_name (str): the module to proxy.
         trace (bool): try to determine and include necessary dependents. 
     """
-
-    store = get_store("module_store")
-    if store is None:
-        if connector == "file":
-            from proxystore.connectors.file import FileConnector
-            connector = FileConnector("module-store")
-        elif connector == "redis":
-            from proxystore.connectors.redis import RedisConnector
-            host = utils.get_ip_address(network)
-            connector = RedisConnector(host, 6379)
-        elif connector == "zmq":
-            from proxystore.connectors.dim.zmq import ZeroMQConnector
-            connector = ZeroMQConnector(network, 5555)
-        elif connector == "multi":
-            from proxystore.connectors.redis import RedisConnector
-            from proxystore.connectors.file import FileConnector
-            from proxystore.connectors.multi import MultiConnector, Policy
-            host = utils.get_ip_address(network)
-            redis_connector = RedisConnector(host, 6379)
-            file_connector = FileConnector("module-store")
-
-            policies = {
-                "redis": (redis_connector, Policy(max_size_bytes=1073741824)),
-                "file_connector": (file_connector, Policy(min_size_bytes=1073741824))
-            }
-
-            connector = MultiConnector(policies)
-
-        store = Store(
-            "module_store",
-            connector,
-            cache_size=16
-        )
-        register_store(store)
+    config = load_config(config)
+    store = create_store_from_config(config["module_store_config"])
 
     if type(modules) != list:
         modules = [modules]
@@ -138,7 +124,8 @@ def store_modules(modules: str | list, trace: bool = True, connector: str = "red
     return results
 
 
-def analyze_func_and_create_proxies(func, connector="file", network="hsn0"):
+def analyze_func_and_create_proxies(func, config: Optional[Union[dict[str, Any], str]] = None):
+    config = load_config(config)
     def _strip_dots(pkg):
         if pkg.startswith('.'):
             raise ImportError('On {}, imports from the current module are not supported'.format(pkg))
@@ -162,4 +149,4 @@ def analyze_func_and_create_proxies(func, connector="file", network="hsn0"):
     if func_module and func_module.__name__ != "__main__":
         imports.add(_strip_dots(func_module.__name__))
     
-    return store_modules(list(imports), connector=connector, network=network)
+    return store_modules(list(imports), config)

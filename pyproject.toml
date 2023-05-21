@@ -20,6 +20,9 @@ dependencies = [
 ]
 dynamic = ["version"]
 
+[project.scripts]
+proxy-imports-init = "proxy_imports.proxy_config:cli_init_proxy_imports"
+
 [tool.setuptools]
 script-files = ["proxy_imports/import_tracer.py"]
 packages = ["proxy_imports"]
