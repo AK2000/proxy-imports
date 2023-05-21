@@ -19,9 +19,9 @@ import parsl
 from parsl.providers import LocalProvider
 from parsl.providers import SlurmProvider
 
-from proxystore.store.file import FileStore
-from proxystore.proxy import extract
-from proxystore.proxy import Proxy
+import proxystore as ps
+import proxystore.connectors.file
+import proxystore.store
 
 import conda.cli.python_api
 from conda.cli.python_api import Commands
@@ -57,11 +57,6 @@ def cleanup(module_name: str, method: str = "file_system", nodes: int = 1) -> No
         conda.cli.python_api.run_command(Commands.REMOVE, "-n", f"newenv-{nodes}", "--all")
         os.remove(f"newenv-{nodes}.tar.gz")
         shutil.rmtree("/dev/shm/local-envs", ignore_errors=True) # Path where environments are unpacked
-    elif method == "lazy":
-        shutil.rmtree(f"{package_path}", ignore_errors=True)
-        from proxystore.store import get_store
-        store = get_store("module_store")
-        store.close()
 
 def make_config(nodes: int = 0, method: str = "file_system") -> parsl.config.Config:
     '''
@@ -95,11 +90,11 @@ def run_tasks(nworkers, model_name, dataset_name, method: str = "file_system") -
 
     start_time = time.perf_counter()
     tsks = []
-    for itsk in range(ntasks):
+    for itsk in range(nworkers):
         if not method == "lazy":
             future = inference(model, tokenizer, dataset_name, chunk_start, chunk_start + chunk_size)
         else:
-            future = inference_transformed(module, tokenizer, dataset_name, chunk_start, chunk_start+ chunk_size)
+            future = inference_transformed(model, tokenizer, dataset_name, chunk_start, chunk_start + chunk_size)
         
         tsks.append(future)
         chunk_start += chunk_size
