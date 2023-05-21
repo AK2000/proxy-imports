@@ -34,21 +34,27 @@ from datasets import load_dataset
 
 
 @parsl.python_app
-def inference(model, tokenizer, dataset_name, start, end):
+def inference(model_name, dataset_name, start, end):
     import transformers
     from datasets import load_dataset
-    data = datasets.load_dataset(dataset_name, split=f"test[{start}%:{end}%]")
+    data = load_dataset(dataset_name, split=f"test[{start}%:{end}%]")
+    id2label = {0: "NEGATIVE", 1: "POSITIVE"}
+    label2id = {"NEGATIVE": 0, "POSITIVE": 1}
 
-    classifier = transformers.pipeline("sentiment-analysis", model=model, tokenizer=tokenizer)
-    return classifier(data)
+    #model = transformers.TFAutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=2, id2label=id2label, label2id=label2id)
+    classifier = transformers.pipeline("sentiment-analysis", model="distilbert-base-uncased")
+    return classifier(data.data["text"]) # data.map(lambda e: classifier(e["text"]), batched=True)
 
 @parsl.python_app
 @proxy_transform
-def inference_transformed(model, tokenizer, dataset_name, start, end):
+def inference_transformed(model_name, dataset_name, start, end):
     import transformers
     from datasets import load_dataset
-    data = datasets.load_dataset(dataset_name, split=f"test[{start}%:{end}%]")
-
+    model = transformers.TFAutoModelForSequenceClassification.from_pretrained(model_name)
+    tokenizer = transformers.AutoTokenizer.from_pretrained("bert-base-cased")
+    
+    data = load_dataset(dataset_name, split=f"test[{start}%:{end}%]")
+    #data = data.map(lambda e: tokenizer(e["text"]), batched=True)
     classifier = transformers.pipeline("sentiment-analysis", model=model, tokenizer=tokenizer)
     return classifier(data)
 
@@ -76,14 +82,14 @@ def make_config(nodes: int = 0, method: str = "file_system") -> parsl.config.Con
     return config
 
 def run_tasks(nworkers, model_name, dataset_name, method: str = "file_system") -> dict[str, float|list]:
-    model = TFAutoModelForSequenceClassification.from_pretrained(model_name)
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    #model = TFAutoModelForSequenceClassification.from_pretrained(model_name)
+    #tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
 
     # Pass arguments by reference as well
     connector = ps.connectors.file.FileConnector("argument_store")
     store = ps.store.Store("arg_store", connector, cache_size=16)
-    model = store.proxy(model)
-    tokenizer = store.proxy(tokenizer)
+    #model = store.proxy(model)
+    #tokenizer = store.proxy(tokenizer)
 
     chunk_size = 100 // nworkers
     chunk_start = 0
@@ -92,9 +98,9 @@ def run_tasks(nworkers, model_name, dataset_name, method: str = "file_system") -
     tsks = []
     for itsk in range(nworkers):
         if not method == "lazy":
-            future = inference(model, tokenizer, dataset_name, chunk_start, chunk_start + chunk_size)
+            future = inference(model_name, dataset_name, chunk_start, chunk_start + chunk_size)
         else:
-            future = inference_transformed(model, tokenizer, dataset_name, chunk_start, chunk_start + chunk_size)
+            future = inference_transformed(model_name, tokenizer, dataset_name, chunk_start, chunk_start + chunk_size)
         
         tsks.append(future)
         chunk_start += chunk_size
