@@ -32,7 +32,6 @@ from proxy_imports import proxy_transform
 from transformers import AutoTokenizer, TFAutoModelForSequenceClassification
 from datasets import load_dataset
 
-package_path = "/dev/shm/proxied-site-packages"
 
 @parsl.python_app
 def inference(model, tokenizer, dataset_name, start, end):
@@ -44,7 +43,7 @@ def inference(model, tokenizer, dataset_name, start, end):
     return classifier(data)
 
 @parsl.python_app
-@proxy_transform(package_path=package_path, connector="file")
+@proxy_transform
 def inference_transformed(model, tokenizer, dataset_name, start, end):
     import transformers
     from datasets import load_dataset
