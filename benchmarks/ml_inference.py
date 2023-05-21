@@ -37,27 +37,25 @@ from datasets import load_dataset
 def inference(model_name, dataset_name, start, end):
     import transformers
     from datasets import load_dataset
-    data = load_dataset(dataset_name, split=f"test[{start}%:{end}%]")
-    id2label = {0: "NEGATIVE", 1: "POSITIVE"}
-    label2id = {"NEGATIVE": 0, "POSITIVE": 1}
+    from transformers.pipelines.base import KeyDataset
+    data = datasets.load_dataset(dataset_name, split=f"test[{start}%:{end}%]")
 
-    #model = transformers.TFAutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=2, id2label=id2label, label2id=label2id)
-    classifier = transformers.pipeline("sentiment-analysis", model="distilbert-base-uncased")
-    return classifier(data.data["text"]) # data.map(lambda e: classifier(e["text"]), batched=True)
+    pipe = transformers.pipeline("sentiment-analysis", model=model, tokenizer=tokenizer)
+    results = [out for out in pipe(transformers.pipelines.base.KeyDataset(data, "text"), batch_size=8, truncation="only_first")]
+    return results
 
 @parsl.python_app
 @proxy_transform
 def inference_transformed(model_name, dataset_name, start, end):
     import transformers
     from datasets import load_dataset
-    model = transformers.TFAutoModelForSequenceClassification.from_pretrained(model_name)
-    tokenizer = transformers.AutoTokenizer.from_pretrained("bert-base-cased")
-    
-    data = load_dataset(dataset_name, split=f"test[{start}%:{end}%]")
-    #data = data.map(lambda e: tokenizer(e["text"]), batched=True)
-    classifier = transformers.pipeline("sentiment-analysis", model=model, tokenizer=tokenizer)
-    return classifier(data)
+    from transformers.pipelines.base import KeyDataset
+    data = datasets.load_dataset(dataset_name, split=f"test[{start}%:{end}%]")
 
+    pipe = transformers.pipeline("sentiment-analysis", model=model, tokenizer=tokenizer)
+    results = [out for out in pipe(transformers.pipelines.base.KeyDataset(data, "text"), batch_size=8, truncation="only_first")]
+    return results
+    
 def cleanup(module_name: str, method: str = "file_system", nodes: int = 1) -> None:
     if method == "conda_pack":
         conda.cli.python_api.run_command(Commands.REMOVE, "-n", f"newenv-{nodes}", "--all")
