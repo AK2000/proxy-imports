@@ -34,28 +34,28 @@ from datasets import load_dataset
 
 
 @parsl.python_app
-def inference(model_name, dataset_name, start, end):
+def inference(dataset_name, start, end):
     import transformers
     from datasets import load_dataset
-    from transformers.pipelines.pt_utils import KeyDataset
     data = load_dataset(dataset_name, split=f"test[{start}%:{end}%]")
-
     pipe = transformers.pipeline("text-classification")
-    pipe("Test review")
+
+    from transformers.pipelines.pt_utils import KeyDataset
     data = KeyDataset(data, "text")
     results = [out for out in pipe(data, batch_size=8, truncation="only_first")]
     return results
 
 @parsl.python_app
 @proxy_transform
-def inference_transformed(model_name, dataset_name, start, end):
+def inference_transformed(dataset_name, start, end):
     import transformers
     from datasets import load_dataset
-    from transformers.pipelines.base import KeyDataset
     data = load_dataset(dataset_name, split=f"test[{start}%:{end}%]")
-
-    pipe = transformers.pipeline("sentiment-analysis", model=model, tokenizer=tokenizer)
-    results = [out for out in pipe(transformers.pipelines.base.KeyDataset(data, "text"), batch_size=8, truncation="only_first")]
+    pipe = transformers.pipeline("text-classification")
+    
+    from transformers.pipelines.pt_utils import KeyDataset
+    data = KeyDataset(data, "text")
+    results = [out for out in pipe(data, batch_size=8, truncation="only_first")]
     return results
     
 def cleanup(module_name: str, method: str = "file_system", nodes: int = 1) -> None:
@@ -81,7 +81,7 @@ def make_config(nodes: int = 0, method: str = "file_system") -> parsl.config.Con
 
     return config
 
-def run_tasks(nworkers, model_name, dataset_name, method: str = "file_system") -> dict[str, float|list]:
+def run_tasks(nworkers, dataset_name, method: str = "file_system") -> dict[str, float|list]:
     #model = TFAutoModelForSequenceClassification.from_pretrained(model_name)
     #tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
 
@@ -98,9 +98,9 @@ def run_tasks(nworkers, model_name, dataset_name, method: str = "file_system") -
     tsks = []
     for itsk in range(nworkers):
         if not method == "lazy":
-            future = inference(model_name, dataset_name, chunk_start, chunk_start + chunk_size)
+            future = inference(dataset_name, chunk_start, chunk_start + chunk_size)
         else:
-            future = inference_transformed(model_name, tokenizer, dataset_name, chunk_start, chunk_start + chunk_size)
+            future = inference_transformed(dataset_name, chunk_start, chunk_start + chunk_size)
         
         tsks.append(future)
         chunk_start += chunk_size
