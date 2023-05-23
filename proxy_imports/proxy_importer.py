@@ -153,13 +153,17 @@ class ProxyModule(lop.Proxy):
 
         if os.path.isfile(f"{self.package_path}/{name}/__init__.py"):
             module_path = f"{self.package_path}/{name}/__init__.py"
+            loader = importlib.machinery.SourceFileLoader(name, module_path)
         elif os.path.isfile(f"{self.package_path}/{name}.py"):
             module_path = f"{self.package_path}/{name}.py"
+            loader = importlib.machinery.SourceFileLoader(name, module_path)
+        elif len(list(Path(f"{self.package_path}/").glob("f{name}.*.so"))) > 0:
+            module_path = str(next(Path(f"{self.package_path}/").glob("f{name}.*.so")))
+            loader = importlib.machinery.ExtensionFileLoader(name, module_path)
         else:
             raise ModuleNotFoundError(f"Could not find file for module {name}")
 
         from importlib.util import module_from_spec
-        loader = importlib.machinery.SourceFileLoader(name, module_path)
         spec = importlib.util.spec_from_loader(name, loader)
 
         # FIXME: There seems to be some weirdness around trying to avoid this in the LazyLoader

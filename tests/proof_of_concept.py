@@ -12,8 +12,10 @@ from proxy_imports import proxy_transform, analyze_func_and_create_proxies, Prox
 package_path = "proxied-site-packages"
 
 def test_func():
-    import numpy
-    return numpy.random.rand(10)
+    import transformers
+    pipe = transformers.pipeline("text-classification")
+
+    return "Success"
 
 def get_transformed_function(queue : multiprocessing.Queue):
     proxies = analyze_func_and_create_proxies(test_func)
