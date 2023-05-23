@@ -157,8 +157,8 @@ class ProxyModule(lop.Proxy):
         elif os.path.isfile(f"{self.package_path}/{name}.py"):
             module_path = f"{self.package_path}/{name}.py"
             loader = importlib.machinery.SourceFileLoader(name, module_path)
-        elif len(list(Path(f"{self.package_path}/").glob("f{name}.*.so"))) > 0:
-            module_path = str(next(Path(f"{self.package_path}/").glob("f{name}.*.so")))
+        elif len(list(Path(f"{self.package_path}/").glob(f"{name}.*.so"))) > 0:
+            module_path = str(next(Path(f"{self.package_path}/").glob(f"{name}.*.so")))
             loader = importlib.machinery.ExtensionFileLoader(name, module_path)
         else:
             raise ModuleNotFoundError(f"Could not find file for module {name}")
