@@ -141,7 +141,6 @@ def main():
     parser.add_argument("--nodes", default=0, type=int, help="Number of nodes")
     parser.add_argument("--method", default="file_system", choices=["conda_pack", "file_system", "lazy"])
     parser.add_argument("--dataset", default="imdb")
-    parser.add_argument("--model", default="distilbert-base-uncased-finetuned-sst-2-english")
     parser.add_argument("--output", default="results.jsonl", help="File to output results")
     parser.add_argument("--run_info", default=None, help="Add additional information to results")
     opts = parser.parse_args()
@@ -153,7 +152,7 @@ def main():
 
     # Run tasks
     print("Running tasks")
-    results = run_tasks(opts.workers, opts.model, opts.dataset, opts.method)
+    results = run_tasks(opts.workers, opts.dataset, opts.method)
 
     # Cleanup
     print("Cleaning up run")
