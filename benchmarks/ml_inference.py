@@ -1,19 +1,12 @@
 import argparse
-import faulthandler
-import importlib
-import inspect
 import io
-import json
 import tarfile
-import os
-import shutil
 import sys
 import time
 from collections import defaultdict
 import importlib
-from pathlib import Path
-import tempfile
 from tqdm import tqdm
+import tarfile
 
 import parsl
 from parsl.providers import LocalProvider
@@ -22,6 +15,7 @@ from parsl.providers import SlurmProvider
 import proxystore as ps
 import proxystore.connectors.file
 import proxystore.store
+from proxystore.serialize import serialize, deserialize
 
 import conda.cli.python_api
 from conda.cli.python_api import Commands
@@ -29,40 +23,59 @@ import conda_pack
 
 from proxy_imports import proxy_transform
 
-from transformers import AutoTokenizer, TFAutoModelForSequenceClassification
-from datasets import load_dataset
+import tensorflow as tf
+import tensorflow_datasets as tfds
+import tensorflow_hub as hub
 
 
 @parsl.python_app
-def inference(dataset_name, start, end):
-    import transformers
-    from datasets import load_dataset
-    data = load_dataset(dataset_name, split=f"test[{start}%:{end}%]")
-    pipe = transformers.pipeline("text-classification")
+def inference(model, index, workers):
+    import tensorflow as tf
+    import tensorflow_datasets as tfds
 
-    from transformers.pipelines.pt_utils import KeyDataset
-    data = KeyDataset(data, "text")
-    results = [out for out in pipe(data, batch_size=8, truncation="only_first")]
-    return results
+    def preprocess(image, label, width=160, height=160):
+        image = tf.image.convert_image_dtype(image, tf.float32)
+        image = tf.image.resize(image, [width, height])
+        image = tf.expand_dims(image, 0)
+        return image, label
+    
+    splits = tfds.even_splits('train', n=workers, drop_remainder=True)
+    split = splits[index]
+    dataset= tfds.load('tf_flowers', split=split, as_supervised=True)
+    dataset = dataset.map(preprocess)
+    labels = []
+    for img, label in dataset:
+        labels.append(model.predict(img))
+    
+    return labels
 
 @parsl.python_app
 @proxy_transform
-def inference_transformed(dataset_name, start, end):
-    import transformers
-    from datasets import load_dataset
-    data = load_dataset(dataset_name, split=f"test[{start}%:{end}%]")
-    pipe = transformers.pipeline("text-classification")
+def inference_transformed(model, index, workers):
+    import tensorflow as tf
+    import tensorflow_datasets as tfds
+
+    def preprocess(image, label, width=160, height=160):
+        image = tf.image.convert_image_dtype(image, tf.float32)
+        image = tf.image.resize(image, [width, height])
+        image = tf.expand_dims(image, 0)
+        return image, label
     
-    from transformers.pipelines.pt_utils import KeyDataset
-    data = KeyDataset(data, "text")
-    results = [out for out in pipe(data, batch_size=8, truncation="only_first")]
-    return results
+    splits = tfds.even_splits('train', n=workers, drop_remainder=True)
+    split = splits[index]
+    dataset= tfds.load('tf_flowers', split=split, as_supervised=True)
+    dataset = dataset.map(preprocess)
+    labels = []
+    for img, label in dataset:
+        labels.append(model.predict(img))
     
+    return labels
+
+
 def cleanup(module_name: str, method: str = "file_system", nodes: int = 1) -> None:
     if method == "conda_pack":
         conda.cli.python_api.run_command(Commands.REMOVE, "-n", f"newenv-{nodes}", "--all")
         os.remove(f"newenv-{nodes}.tar.gz")
-        shutil.rmtree("/dev/shm/local-envs", ignore_errors=True) # Path where environments are unpacked
 
 def make_config(nodes: int = 0, method: str = "file_system") -> parsl.config.Config:
     '''
@@ -81,26 +94,48 @@ def make_config(nodes: int = 0, method: str = "file_system") -> parsl.config.Con
 
     return config
 
-def run_tasks(nworkers, dataset_name, method: str = "file_system") -> dict[str, float|list]:
-    #model = TFAutoModelForSequenceClassification.from_pretrained(model_name)
-    #tokenizer = AutoTokenizer.from_pretrained("bert-base-cased")
+def serialize_model(model):
+        model.save("mobilenet_model")
+        tar = io.BytesIO()
+        with tarfile.open(fileobj=tar, mode="w|") as f:
+            f.add("mobilenet_model")
 
+        model_tar = tar.getvalue()
+        return serialize(model_tar)
+
+def deserialize_model(serialized_data):
+    tar_files = io.BytesIO(deserialize(serialized_data))
+    with tarfile.open(fileobj=tar_files, mode="r|") as f:
+        f.extractall(path="/dev/shm/")
+    
+    from tensorflow import keras
+    model = keras.models.load_model('/dev/shm/mobilenet_model')
+    return model
+
+def load_and_proxy_model(argument_store):
+    m = tf.keras.Sequential([
+        hub.KerasLayer("https://tfhub.dev/google/imagenet/mobilenet_v2_075_160/classification/5")
+    ])
+    m.build([None, 160, 160, 3])
+
+    m = argument_store.proxy(m, serializer=serialize_model, deserializer=deserialize_model)
+    return m
+
+
+
+def run_tasks(nworkers, method: str = "file_system") -> dict[str, float|list]:
     # Pass arguments by reference as well
     connector = ps.connectors.file.FileConnector("argument_store")
     store = ps.store.Store("arg_store", connector, cache_size=16)
-    #model = store.proxy(model)
-    #tokenizer = store.proxy(tokenizer)
 
-    chunk_size = 100 // nworkers
-    chunk_start = 0
-
+    model = load_and_proxy_model(store)
     start_time = time.perf_counter()
     tsks = []
     for itsk in range(nworkers):
         if not method == "lazy":
-            future = inference(dataset_name, chunk_start, chunk_start + chunk_size)
+            future = inference(model, index, nworkers)
         else:
-            future = inference_transformed(dataset_name, chunk_start, chunk_start + chunk_size)
+            future = inference_transformed(model, index, nworkers)
         
         tsks.append(future)
         chunk_start += chunk_size
