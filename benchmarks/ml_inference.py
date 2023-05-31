@@ -9,8 +9,7 @@ from tqdm import tqdm
 import tarfile
 
 import parsl
-from parsl.providers import LocalProvider
-from parsl.providers import SlurmProvider
+from parsl_config import make_config_perlmutter
 
 import proxystore as ps
 import proxystore.connectors.file
@@ -32,6 +31,17 @@ import tensorflow_hub as hub
 def inference(model, index, workers):
     import tensorflow as tf
     import tensorflow_datasets as tfds
+
+    def deserialize_model(serialized_data):
+        tar_files = io.BytesIO(deserialize(serialized_data))
+        with tarfile.open(fileobj=tar_files, mode="r|") as f:
+            f.extractall(path="/dev/shm/")
+        
+        from tensorflow import keras
+        model = keras.models.load_model('/dev/shm/mobilenet_model')
+        return model
+    
+    model.__factory__.deserializer = deserialize_model
 
     def preprocess(image, label, width=160, height=160):
         image = tf.image.convert_image_dtype(image, tf.float32)
@@ -55,6 +65,17 @@ def inference_transformed(model, index, workers):
     import tensorflow as tf
     import tensorflow_datasets as tfds
 
+    def deserialize_model(serialized_data):
+        tar_files = io.BytesIO(deserialize(serialized_data))
+        with tarfile.open(fileobj=tar_files, mode="r|") as f:
+            f.extractall(path="/dev/shm/")
+        
+        from tensorflow import keras
+        model = keras.models.load_model('/dev/shm/mobilenet_model')
+        return model
+
+    model.__factory__.deserializer = deserialize_model
+
     def preprocess(image, label, width=160, height=160):
         image = tf.image.convert_image_dtype(image, tf.float32)
         image = tf.image.resize(image, [width, height])
@@ -71,23 +92,6 @@ def inference_transformed(model, index, workers):
     
     return labels
 
-def make_config(nodes: int = 0, method: str = "file_system") -> parsl.config.Config:
-    '''
-    Build a config for an executor.
-    '''
-    provider = LocalProvider(worker_init=f"source setup_scripts/setup_{method}.sh")
-    if nodes > 1:
-        provider.launcher = parsl.launchers.SrunLauncher(overrides='-K0 -k')
-        provider.nodes_per_block = nodes
-    executor = parsl.HighThroughputExecutor(provider=provider)
-
-    config = parsl.config.Config(
-       executors=[ executor ],
-       strategy=None
-    )
-
-    return config
-
 def serialize_model(model):
     model.save("mobilenet_model")
     tar = io.BytesIO()
@@ -97,25 +101,14 @@ def serialize_model(model):
     model_tar = tar.getvalue()
     return serialize(model_tar)
 
-def deserialize_model(serialized_data):
-    tar_files = io.BytesIO(deserialize(serialized_data))
-    with tarfile.open(fileobj=tar_files, mode="r|") as f:
-        f.extractall(path="/dev/shm/")
-    
-    from tensorflow import keras
-    model = keras.models.load_model('/dev/shm/mobilenet_model')
-    return model
-
 def load_and_proxy_model(argument_store):
     m = tf.keras.Sequential([
         hub.KerasLayer("https://tfhub.dev/google/imagenet/mobilenet_v2_075_160/classification/5")
     ])
     m.build([None, 160, 160, 3])
 
-    m = argument_store.proxy(m, serializer=serialize_model, deserializer=deserialize_model)
+    m = argument_store.proxy(m, serializer=serialize_model)
     return m
-
-
 
 def run_tasks(nworkers, method: str = "file_system") -> dict[str, float|list]:
     # Pass arguments by reference as well
@@ -174,7 +167,7 @@ def main():
 
     # Setup parsl
     print("Making Parsl config")
-    config = make_config(opts.nodes, opts.method)
+    config = make_config_perlmutter(opts.nodes, opts.method)
     parsl.load(config)
 
     # Run tasks
