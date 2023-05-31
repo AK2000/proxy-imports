@@ -1,0 +1,29 @@
+numpy
+requests
+pandas
+tensorflow
+matplotlib
+torch
+globus_sdk
+h5py
+opencv-python cv2
+scipy
+appfl
+boto3
+Pillow PIL
+abyss
+proxystore
+google-api-python-client googleapiclient
+rdkit
+google_auth_oauthlib
+google
+scikit-learn sklearn
+pyhf
+concierge
+torchvision
+coffea
+fair_research_login
+funcx
+datasketch
+netCDF4
+dataset
