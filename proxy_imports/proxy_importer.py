@@ -113,7 +113,7 @@ class ProxyModule(lop.Proxy):
             return "Done"
     
         for count in range(3):
-            timeout = 120
+            timeout = 600
             try:
                 # Prevent multiple tasks from extracting proxy
                 if count == 0:
