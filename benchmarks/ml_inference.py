@@ -44,7 +44,7 @@ def inference(model, index, workers):
     dataset= tfds.load('tf_flowers', split=split, as_supervised=True)
     dataset = dataset.map(preprocess)
     labels = []
-    for img, label in dataset:
+    for img, label in dataset.take(1):
         labels.append(model.predict(img))
     
     return labels
@@ -71,12 +71,6 @@ def inference_transformed(model, index, workers):
     
     return labels
 
-
-def cleanup(module_name: str, method: str = "file_system", nodes: int = 1) -> None:
-    if method == "conda_pack":
-        conda.cli.python_api.run_command(Commands.REMOVE, "-n", f"newenv-{nodes}", "--all")
-        os.remove(f"newenv-{nodes}.tar.gz")
-
 def make_config(nodes: int = 0, method: str = "file_system") -> parsl.config.Config:
     '''
     Build a config for an executor.
@@ -95,13 +89,13 @@ def make_config(nodes: int = 0, method: str = "file_system") -> parsl.config.Con
     return config
 
 def serialize_model(model):
-        model.save("mobilenet_model")
-        tar = io.BytesIO()
-        with tarfile.open(fileobj=tar, mode="w|") as f:
-            f.add("mobilenet_model")
+    model.save("mobilenet_model")
+    tar = io.BytesIO()
+    with tarfile.open(fileobj=tar, mode="w|") as f:
+        f.add("mobilenet_model")
 
-        model_tar = tar.getvalue()
-        return serialize(model_tar)
+    model_tar = tar.getvalue()
+    return serialize(model_tar)
 
 def deserialize_model(serialized_data):
     tar_files = io.BytesIO(deserialize(serialized_data))
@@ -133,12 +127,11 @@ def run_tasks(nworkers, method: str = "file_system") -> dict[str, float|list]:
     tsks = []
     for itsk in range(nworkers):
         if not method == "lazy":
-            future = inference(model, index, nworkers)
+            future = inference(model, itsk, nworkers)
         else:
-            future = inference_transformed(model, index, nworkers)
+            future = inference_transformed(model, itsk, nworkers)
         
         tsks.append(future)
-        chunk_start += chunk_size
     launch_time = time.perf_counter() - start_time
 
     status_counts = defaultdict(int)
@@ -175,7 +168,6 @@ def main():
     parser.add_argument("--workers", default=1, type=int, help="Number of tasks")
     parser.add_argument("--nodes", default=0, type=int, help="Number of nodes")
     parser.add_argument("--method", default="file_system", choices=["conda_pack", "file_system", "lazy"])
-    parser.add_argument("--dataset", default="imdb")
     parser.add_argument("--output", default="results.jsonl", help="File to output results")
     parser.add_argument("--run_info", default=None, help="Add additional information to results")
     opts = parser.parse_args()
@@ -187,16 +179,11 @@ def main():
 
     # Run tasks
     print("Running tasks")
-    results = run_tasks(opts.workers, opts.dataset, opts.method)
-
-    # Cleanup
-    print("Cleaning up run")
-    cleanup(opts.module, opts.method, opts.nodes)
+    results = run_tasks(opts.workers, opts.method)
 
     # Write results into file
     results["method"] = opts.method
-    results["module"] = opts.module
-    results["nodes"] = opts.nodes_per_block
+    results["nodes"] = opts.nodes
     results["workers"] = opts.workers
 
     if opts.run_info is not None:
