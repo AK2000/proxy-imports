@@ -99,17 +99,14 @@ class ProxyModule(lop.Proxy):
             with tarfile.open(fileobj=tar_str, mode="r|") as f:
                 f.extractall(path=self.package_path)
             
-            tar_str = io.BytesIO(tar_files["libraries"])
-            library_path = os.path.join(self.package_path, "libraries")
-            with tarfile.open(fileobj=tar_str, mode="r|") as f:
-                for file_ in f:
-                    try:
-                        f.extract(file_, path=library_path)
-                    except IOError as e:
-                        pass
-
-            Path(f"{self.package_path}/{name}_done.tmp").touch()
-
+            #tar_str = io.BytesIO(tar_files["libraries"])
+            #library_path = os.path.join(self.package_path, "libraries")
+            #with tarfile.open(fileobj=tar_str, mode="r|") as f:
+            #    for file_ in f:
+            #        try:
+            #            f.extract(file_, path=library_path)
+            #        except IOError as e:
+            #            pass
             return "Done"
     
         try:
@@ -117,8 +114,7 @@ class ProxyModule(lop.Proxy):
             Path(f"{self.package_path}/{name}.tmp").touch(exist_ok=False)
             proxy.__factory__.deserializer = deserialize_and_untar
             resolve(proxy)
-            break
-
+            Path(f"{self.package_path}/{name}_done.tmp").touch()
         except FileExistsError as e:
             # Wait for package to finish extracting before continuing
             while (not Path(f"{self.package_path}/{name}_done.tmp").exists()):
@@ -128,8 +124,8 @@ class ProxyModule(lop.Proxy):
     
     def load_package(self, name: str):
         """Factory method for a package"""
-        if self.file_unpack.exception():
-            raise self.file_unpack.exception()
+        if not self.file_unpack.done():
+            self.unpack(self.proxy, name)
 
         if os.path.isfile(f"{self.package_path}/{name}/__init__.py"):
             module_path = f"{self.package_path}/{name}/__init__.py"

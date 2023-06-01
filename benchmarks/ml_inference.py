@@ -31,6 +31,7 @@ import tensorflow_hub as hub
 def inference(model, index, workers):
     import tensorflow as tf
     import tensorflow_datasets as tfds
+    import io
 
     def deserialize_model(serialized_data):
         tar_files = io.BytesIO(deserialize(serialized_data))
@@ -64,6 +65,7 @@ def inference(model, index, workers):
 def inference_transformed(model, index, workers):
     import tensorflow as tf
     import tensorflow_datasets as tfds
+    import io
 
     def deserialize_model(serialized_data):
         tar_files = io.BytesIO(deserialize(serialized_data))
