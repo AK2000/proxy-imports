@@ -112,39 +112,19 @@ class ProxyModule(lop.Proxy):
 
             return "Done"
     
-        for count in range(3):
-            timeout = 600
-            try:
-                # Prevent multiple tasks from extracting proxy
-                if count == 0:
-                    Path(f"{self.package_path}/{name}.tmp").touch(exist_ok=False)
-                else:
-                    Path(f"{self.package_path}/{name}-retry.tmp").touch(exist_ok=False)
-                    # Assert that file is older than the timeout
-                    try:
-                        assert (time.time() - Path(f"{self.package_path}/{name}.tmp").stat().st_mtime >= (timeout/2))
-                        Path(f"{self.package_path}/{name}.tmp").touch(exist_ok=True)
-                    except AssertionError:
-                        raise FileExistsError # Punt to other exception handler after deleting file
-                    finally:
-                        Path(f"{self.package_path}/{name}-retry.tmp").unlink()
+        try:
+            # Prevent multiple tasks from extracting proxy
+            Path(f"{self.package_path}/{name}.tmp").touch(exist_ok=False)
+            proxy.__factory__.deserializer = deserialize_and_untar
+            resolve(proxy)
+            break
 
-                proxy.__factory__.deserializer = deserialize_and_untar
-                resolve(proxy)
-                break
-
-            except FileExistsError as e:
-                # Wait for package to finish extracting before continuing
-                prev_try_time = Path(f"{self.package_path}/{name}.tmp").stat().st_mtime
-                while (not Path(f"{self.package_path}/{name}_done.tmp").exists()) and (time.time() - prev_try_time < timeout):
-                    time.sleep(1)
-                    
-                if Path(f"{self.package_path}/{name}_done.tmp").exists():
-                    # Prevent deserialization
-                    object.__setattr__(proxy, '__target__', 1)
-                    break
-                else:
-                    timeout *= 2 # Exponential back off
+        except FileExistsError as e:
+            # Wait for package to finish extracting before continuing
+            while (not Path(f"{self.package_path}/{name}_done.tmp").exists()):
+                time.sleep(1)
+        
+        return "Done"
     
     def load_package(self, name: str):
         """Factory method for a package"""
