@@ -1,5 +1,5 @@
 #!/bin/bash
-
+cd /lus/swift/home/alokvk2/lazy-imports
 source setup.sh
 export BLOCKSIZE=$COBALT_BLOCKSIZE
 
