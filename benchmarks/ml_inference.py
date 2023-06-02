@@ -1,5 +1,6 @@
 import argparse
 import io
+import json
 import tarfile
 import sys
 import time
@@ -31,33 +32,49 @@ import tensorflow_hub as hub
 def inference(model, index, workers):
     import tensorflow as tf
     import tensorflow_datasets as tfds
+    from proxystore.serialize import deserialize
     import io
+    import tarfile
+    from pathlib import Path
 
+    print("Imported modules")
     def deserialize_model(serialized_data):
-        tar_files = io.BytesIO(deserialize(serialized_data))
-        with tarfile.open(fileobj=tar_files, mode="r|") as f:
-            f.extractall(path="/dev/shm/")
+        try:
+            Path(f"/dev/shm/mobilenet_model.tmp").touch(exist_ok=False)
+            tar_files = io.BytesIO(deserialize(serialized_data))
+            with tarfile.open(fileobj=tar_files, mode="r|") as f:
+                f.extractall(path="/dev/shm/")
+            Path(f"/dev/shm/mobilenet_model_done.tmp").touch()
+        except FileExistsError as e:
+            while not Path(f"/dev/shm/mobilenet_model_done.tmp").exists():
+                time.sleep(1)
         
         from tensorflow import keras
         model = keras.models.load_model('/dev/shm/mobilenet_model')
         return model
     
     model.__factory__.deserializer = deserialize_model
-
+    
+    print("Set model deserializer")
     def preprocess(image, label, width=160, height=160):
         image = tf.image.convert_image_dtype(image, tf.float32)
         image = tf.image.resize(image, [width, height])
         image = tf.expand_dims(image, 0)
         return image, label
     
+    print("Downloading data")
     splits = tfds.even_splits('train', n=workers, drop_remainder=True)
     split = splits[index]
     dataset= tfds.load('tf_flowers', split=split, as_supervised=True)
-    dataset = dataset.map(preprocess)
-    labels = []
-    for img, label in dataset.take(1):
-        labels.append(model.predict(img))
     
+    print("Preprocessing Data")
+    dataset = dataset.map(preprocess)
+
+    print("Performing Inference")
+    labels = []
+    for img, label in dataset:
+        labels.append(model.predict(img))
+
     return labels
 
 @parsl.python_app
@@ -65,17 +82,28 @@ def inference(model, index, workers):
 def inference_transformed(model, index, workers):
     import tensorflow as tf
     import tensorflow_datasets as tfds
+    from proxystore.serialize import deserialize
     import io
+    import tarfile
+    from pathlib import Path
 
+    print("Imported modules")
     def deserialize_model(serialized_data):
-        tar_files = io.BytesIO(deserialize(serialized_data))
-        with tarfile.open(fileobj=tar_files, mode="r|") as f:
-            f.extractall(path="/dev/shm/")
-        
+        try:
+            Path(f"/dev/shm/mobilenet_model.tmp").touch(exist_ok=False)
+            tar_files = io.BytesIO(deserialize(serialized_data))
+            with tarfile.open(fileobj=tar_files, mode="r|") as f:
+                f.extractall(path="/dev/shm/")
+            Path(f"/dev/shm/mobilenet_model_done.tmp").touch()
+        except FileExistsError as e:
+            while not Path(f"/dev/shm/mobilenet_model_done.tmp").exists():
+                time.sleep(1)
+
         from tensorflow import keras
         model = keras.models.load_model('/dev/shm/mobilenet_model')
         return model
 
+    print("Set model deserializer")
     model.__factory__.deserializer = deserialize_model
 
     def preprocess(image, label, width=160, height=160):
@@ -84,10 +112,15 @@ def inference_transformed(model, index, workers):
         image = tf.expand_dims(image, 0)
         return image, label
     
-    splits = tfds.even_splits('train', n=workers, drop_remainder=True)
+    print("Downloading data")
+    splits = tfds.even_splits('train', n=128, drop_remainder=True)
     split = splits[index]
     dataset= tfds.load('tf_flowers', split=split, as_supervised=True)
+
+    print("Preprocessing data")
     dataset = dataset.map(preprocess)
+    
+    print("Performing inference")
     labels = []
     for img, label in dataset:
         labels.append(model.predict(img))
@@ -150,7 +183,7 @@ def run_tasks(nworkers, method: str = "file_system") -> dict[str, float|list]:
     finish_time = time.perf_counter() - start_time
 
     results = {
-        "ntasks" : ntasks,
+        "ntasks" : nworkers,
         "launch_time": launch_time,
         "end_time": finish_time
     }

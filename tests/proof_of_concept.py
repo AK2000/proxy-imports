@@ -14,7 +14,7 @@ import proxystore.connectors.file
 import proxystore.store
 from proxystore.serialize import serialize, deserialize
 
-package_path = "proxied-site-packages"
+package_path = "/dev/shm/proxied-site-packages"
 
 def test_func(model, index, workers):
     import tensorflow as tf
@@ -25,7 +25,7 @@ def test_func(model, index, workers):
         image = tf.image.resize(image, [width, height])
         image = tf.expand_dims(image, 0)
         return image, label
-    
+
     splits = tfds.even_splits('train', n=workers, drop_remainder=True)
     split = splits[index]
     dataset= tfds.load('tf_flowers', split=split, as_supervised=True)
