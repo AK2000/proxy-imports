@@ -2,8 +2,9 @@
 
 # Script to accquire and run allocations
 
-for nodes in 64; do
-    sbatch -N ${nodes} -C cpu -q regular -J lazy-import-${nodes} -t 02:00:00 benchmarks/scripts/run_experiment.sh
+for nodes in 128; do
+    qsub -n ${nodes} -t 02:00:00 -A CSC249ADCD08 -O lazy-import-${nodes} benchmarks/scripts/run_experiment.sh
 done
 
-sbatch -N 64 -C cpu -q regular -J lazy-import-sim -t 02:00:00 benchmarks/scripts/simulated_package_exp.sh
+qsub -n 128 -t 02:00:00 -A CSC249ADCD08 -O lazy-import-simulated-pkg benchmarks/scripts/simulated_package_exp.sh
+qsub -n 128 -t 02:00:00 -A CSC249ADCD08 -O lazy-import-xtb benchmarks/scripts/xtb_experiments.sh

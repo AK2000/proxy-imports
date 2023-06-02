@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Script to run all experiments on a single allocation
-
+cd /lus/swift/home/alokvk2/lazy-imports
 source setup.sh
 export BLOCKSIZE=$COBALT_BLOCKSIZE
 
