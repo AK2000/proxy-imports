@@ -15,7 +15,7 @@ for nodes in 64 32 16 8 4 2 1; do
 					--method ${method} \
 					--output results/theta/ml_results.jsonl
 			done
-			rm /lus/sqift/home/alokvk2/.proxy_modules/module-store/*
+			rm /lus/swift/home/alokvk2/.proxy_modules/module-store/*
 			rm argument_store/*
 		fi
     done
