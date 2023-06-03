@@ -113,7 +113,7 @@ def inference_transformed(model, index, workers):
         return image, label
     
     print("Downloading data")
-    splits = tfds.even_splits('train', n=128, drop_remainder=True)
+    splits = tfds.even_splits('train', n=workers, drop_remainder=True)
     split = splits[index]
     dataset= tfds.load('tf_flowers', split=split, as_supervised=True)
 
