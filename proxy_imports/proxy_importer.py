@@ -99,14 +99,14 @@ class ProxyModule(lop.Proxy):
             with tarfile.open(fileobj=tar_str, mode="r|") as f:
                 f.extractall(path=self.package_path)
             
-            #tar_str = io.BytesIO(tar_files["libraries"])
-            #library_path = os.path.join(self.package_path, "libraries")
-            #with tarfile.open(fileobj=tar_str, mode="r|") as f:
-            #    for file_ in f:
-            #        try:
-            #            f.extract(file_, path=library_path)
-            #        except IOError as e:
-            #            pass
+            tar_str = io.BytesIO(tar_files["libraries"])
+            library_path = os.path.join(self.package_path, "libraries")
+            with tarfile.open(fileobj=tar_str, mode="r|") as f:
+                for file_ in f:
+                    try:
+                        f.extract(file_, path=library_path)
+                    except IOError as e:
+                        pass
             return "Done"
     
         try:
