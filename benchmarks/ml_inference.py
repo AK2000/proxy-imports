@@ -12,11 +12,6 @@ import tarfile
 import parsl
 from parsl_config import make_config_perlmutter
 
-import proxystore as ps
-import proxystore.connectors.file
-import proxystore.store
-from proxystore.serialize import serialize, deserialize
-
 import conda.cli.python_api
 from conda.cli.python_api import Commands
 import conda_pack
@@ -27,35 +22,19 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 import tensorflow_hub as hub
 
-
 @parsl.python_app
-def inference(model, index, workers):
+def inference(index, workers):
     import tensorflow as tf
     import tensorflow_datasets as tfds
-    from proxystore.serialize import deserialize
-    import io
-    import tarfile
-    from pathlib import Path
-
+    import tensorflow_hub as hub
     print("Imported modules")
-    def deserialize_model(serialized_data):
-        try:
-            Path(f"/dev/shm/mobilenet_model.tmp").touch(exist_ok=False)
-            tar_files = io.BytesIO(deserialize(serialized_data))
-            with tarfile.open(fileobj=tar_files, mode="r|") as f:
-                f.extractall(path="/dev/shm/")
-            Path(f"/dev/shm/mobilenet_model_done.tmp").touch()
-        except FileExistsError as e:
-            while not Path(f"/dev/shm/mobilenet_model_done.tmp").exists():
-                time.sleep(1)
-        
-        from tensorflow import keras
-        model = keras.models.load_model('/dev/shm/mobilenet_model')
-        return model
-    
-    model.__factory__.deserializer = deserialize_model
-    
-    print("Set model deserializer")
+
+    m = tf.keras.Sequential([
+        hub.KerasLayer("https://tfhub.dev/google/imagenet/mobilenet_v2_075_160/classification/5")
+    ])
+    m.build([None, 160, 160, 3])
+    print("Downloaded and built model")
+
     def preprocess(image, label, width=160, height=160):
         image = tf.image.convert_image_dtype(image, tf.float32)
         image = tf.image.resize(image, [width, height])
@@ -79,32 +58,17 @@ def inference(model, index, workers):
 
 @parsl.python_app
 @proxy_transform
-def inference_transformed(model, index, workers):
+def inference_transformed(index, workers):
     import tensorflow as tf
     import tensorflow_datasets as tfds
-    from proxystore.serialize import deserialize
-    import io
-    import tarfile
-    from pathlib import Path
-
+    import tensorflow_hub as hub
     print("Imported modules")
-    def deserialize_model(serialized_data):
-        try:
-            Path(f"/dev/shm/mobilenet_model.tmp").touch(exist_ok=False)
-            tar_files = io.BytesIO(deserialize(serialized_data))
-            with tarfile.open(fileobj=tar_files, mode="r|") as f:
-                f.extractall(path="/dev/shm/")
-            Path(f"/dev/shm/mobilenet_model_done.tmp").touch()
-        except FileExistsError as e:
-            while not Path(f"/dev/shm/mobilenet_model_done.tmp").exists():
-                time.sleep(1)
 
-        from tensorflow import keras
-        model = keras.models.load_model('/dev/shm/mobilenet_model')
-        return model
-
-    print("Set model deserializer")
-    model.__factory__.deserializer = deserialize_model
+    m = tf.keras.Sequential([
+        hub.KerasLayer("https://tfhub.dev/google/imagenet/mobilenet_v2_075_160/classification/5")
+    ])
+    m.build([None, 160, 160, 3])
+    print("Downloaded and built model")
 
     def preprocess(image, label, width=160, height=160):
         image = tf.image.convert_image_dtype(image, tf.float32)
@@ -127,37 +91,15 @@ def inference_transformed(model, index, workers):
     
     return labels
 
-def serialize_model(model):
-    model.save("mobilenet_model")
-    tar = io.BytesIO()
-    with tarfile.open(fileobj=tar, mode="w|") as f:
-        f.add("mobilenet_model")
-
-    model_tar = tar.getvalue()
-    return serialize(model_tar)
-
-def load_and_proxy_model(argument_store):
-    m = tf.keras.Sequential([
-        hub.KerasLayer("https://tfhub.dev/google/imagenet/mobilenet_v2_075_160/classification/5")
-    ])
-    m.build([None, 160, 160, 3])
-
-    m = argument_store.proxy(m, serializer=serialize_model)
-    return m
-
 def run_tasks(nworkers, method: str = "file_system") -> dict[str, float|list]:
     # Pass arguments by reference as well
-    connector = ps.connectors.file.FileConnector("argument_store")
-    store = ps.store.Store("arg_store", connector, cache_size=16)
-
-    model = load_and_proxy_model(store)
     start_time = time.perf_counter()
     tsks = []
     for itsk in range(nworkers):
         if not method == "lazy":
-            future = inference(model, itsk, nworkers)
+            future = inference(itsk, nworkers)
         else:
-            future = inference_transformed(model, itsk, nworkers)
+            future = inference_transformed(itsk, nworkers)
         
         tsks.append(future)
     launch_time = time.perf_counter() - start_time
