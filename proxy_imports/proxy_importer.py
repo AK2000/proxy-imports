@@ -6,13 +6,15 @@ import sys
 import importlib
 from importlib import abc
 from importlib._bootstrap import _ModuleLockManager
+from importlib.util import module_from_spec
 import inspect
 import io
 import os
 from pathlib import Path
-import tarfile
 from types import ModuleType
 import time
+import zipfile
+import zipimport
 
 from proxystore.proxy import Proxy, resolve, is_resolved
 from proxystore.store import Store, get_store, register_store
@@ -93,31 +95,40 @@ class ProxyModule(lop.Proxy):
         """Unpacks the tar file into the correct place"""
 
         def deserialize_and_untar(b: bytes):
-            tar_files = deserialize(b)
+            zip_files = deserialize(b)
 
-            tar_str = io.BytesIO(tar_files["module"])
-            with tarfile.open(fileobj=tar_str, mode="r|") as f:
-                f.extractall(path=self.package_path)
-            
-            tar_str = io.BytesIO(tar_files["libraries"])
+            module_bytes = zip_files["module"]
+            if not zip_files["extract"]:
+                with open(f"{self.package_path}/{name}.zip",'wb', 100*(2**20)) as local_archive:
+                    local_archive.write(module_bytes)
+            else:
+                print("Extracting zip file")
+                zip_buffer = io.BytesIO(module_bytes)
+                with zipfile.ZipFile(zip_buffer, "r") as fzip:
+                    fzip.extractall(path=self.package_path)
+
+            library_buffer = io.BytesIO(zip_files["libraries"])
             library_path = os.path.join(self.package_path, "libraries")
-            with tarfile.open(fileobj=tar_str, mode="r|") as f:
-                for file_ in f:
+            with zipfile.ZipFile(library_buffer, "r") as fzip:
+                for file_ in fzip.namelist():
                     try:
-                        f.extract(file_, path=library_path)
+                        fzip.extract(file_, path=library_path)
                     except IOError as e:
                         pass
+
             return "Done"
     
+        started_file = Path(f"{self.package_path}/{name}.tmp")
+        finished_file = Path(f"{self.package_path}/{name}_done.tmp")
         try:
             # Prevent multiple tasks from extracting proxy
-            Path(f"{self.package_path}/{name}.tmp").touch(exist_ok=False)
+            started_file.touch(exist_ok=False)
             proxy.__factory__.deserializer = deserialize_and_untar
             resolve(proxy)
-            Path(f"{self.package_path}/{name}_done.tmp").touch()
+            finished_file.touch()
         except FileExistsError as e:
             # Wait for package to finish extracting before continuing
-            while (not Path(f"{self.package_path}/{name}_done.tmp").exists()):
+            while (not finished_file.exists()):
                 time.sleep(1)
         
         return "Done"
@@ -126,21 +137,25 @@ class ProxyModule(lop.Proxy):
         """Factory method for a package"""
         if not self.file_unpack.done():
             self.unpack(self.proxy, name)
-
-        if os.path.isfile(f"{self.package_path}/{name}/__init__.py"):
+        
+        if os.path.isfile(f"{self.package_path}/{name}.zip"):
+            archivepath = f"{self.package_path}/{name}.zip"
+            importer = zipimport.zipimporter(archivepath)
+            spec = importer.find_spec(name)
+        elif os.path.isfile(f"{self.package_path}/{name}/__init__.py"):
             module_path = f"{self.package_path}/{name}/__init__.py"
             loader = importlib.machinery.SourceFileLoader(name, module_path)
+            spec = importlib.util.spec_from_loader(name, loader)
         elif os.path.isfile(f"{self.package_path}/{name}.py"):
             module_path = f"{self.package_path}/{name}.py"
             loader = importlib.machinery.SourceFileLoader(name, module_path)
+            spec = importlib.util.spec_from_loader(name, loader)
         elif len(list(Path(f"{self.package_path}/").glob(f"{name}.*.so"))) > 0:
             module_path = str(next(Path(f"{self.package_path}/").glob(f"{name}.*.so")))
             loader = importlib.machinery.ExtensionFileLoader(name, module_path)
+            spec = importlib.util.spec_from_loader(name, loader)
         else:
             raise ModuleNotFoundError(f"Could not find file for module {name}")
-
-        from importlib.util import module_from_spec
-        spec = importlib.util.spec_from_loader(name, loader)
 
         # FIXME: There seems to be some weirdness around trying to avoid this in the LazyLoader
         # I can't seem to find anything that talks about this, and I don't know where it is 
