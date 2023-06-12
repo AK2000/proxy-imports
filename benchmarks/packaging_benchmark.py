@@ -75,12 +75,13 @@ def unpack(buffer:bytes, method:str = "tar"):
 if __name__ == "__main__":
     import tensorflow
 
-    #module_bytes = package(tensorflow, "tar")
+    module_bytes = package(tensorflow, "tar")
     
-    #start = time.perf_counter()
-    #unpack(module_bytes, "tar")
-    #finish = time.perf_counter() - start
-    #print(f"Time for Tar Method: {finish}")
+    start = time.perf_counter()
+    unpack(module_bytes, "tar")
+    finish = time.perf_counter() - start
+    print(f"Time for Tar Method: {finish}")
+    print(f"Length of module: {len(module_bytes)}")
 
     module_bytes = package(tensorflow, "zip")
 
@@ -88,6 +89,7 @@ if __name__ == "__main__":
     unpack(module_bytes, "zip")
     finish = time.perf_counter() - start
     print(f"Time for Zip Method: {finish}")
+    print(f"Length of module: {len(module_bytes)}")
 
     start = time.perf_counter()
     unpack(module_bytes, "zip:extract")
