@@ -63,26 +63,26 @@ def unpack(buffer:bytes, method:str = "tar"):
     if method == "tar":
         tar_str = io.BytesIO(buffer)
         with tarfile.open(fileobj=tar_str, mode="r|") as f:
-            f.extractall("./proxied-site-packages/numpy")
+            f.extractall("./proxied-site-packages/tensorflow")
     elif method == "zip":
-        with open(f"numpy.zip",'wb', 100*(2**20)) as local_archive:
+        with open(f"tensorflow.zip",'wb', 100*(2**20)) as local_archive:
             local_archive.write(buffer)
     elif method == "zip:extract":
         zip_buffer = io.BytesIO(buffer)
         with zipfile.ZipFile(zip_buffer, "r") as fzip:
-            fzip.extractall("./proxied-site-packages/numpy")
+            fzip.extractall("./proxied-site-packages/tensorflow")
 
 if __name__ == "__main__":
-    import numpy
+    import tensorflow
 
-    module_bytes = package(numpy, "tar")
+    #module_bytes = package(tensorflow, "tar")
     
-    start = time.perf_counter()
-    unpack(module_bytes, "tar")
-    finish = time.perf_counter() - start
-    print(f"Time for Tar Method: {finish}")
+    #start = time.perf_counter()
+    #unpack(module_bytes, "tar")
+    #finish = time.perf_counter() - start
+    #print(f"Time for Tar Method: {finish}")
 
-    module_bytes = package(numpy, "zip")
+    module_bytes = package(tensorflow, "zip")
 
     start = time.perf_counter()
     unpack(module_bytes, "zip")
