@@ -129,7 +129,7 @@ class ProxyModule(lop.Proxy):
         except FileExistsError as e:
             # Wait for package to finish extracting before continuing
             while (not finished_file.exists()):
-                time.sleep(0.2)
+                time.sleep(1)
         
         return "Done"
     
