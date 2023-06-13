@@ -67,14 +67,14 @@ def _serialize_module(m: ModuleType) -> dict[str, bytes]:
         except ModuleNotFoundError:
             print(f"{m.__name__} is not a conda package or was not installed with conda. Cannot find all shared libraries.")
 
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w") as fzip:
+    library_buffer = io.BytesIO()
+    with tarfile.open(fileobj=library_buffer, mode="w|") as f:
         for path, _ in libraries:
-            fzip.write(path, os.path.basename(path))
+            f.add(path, arcname=os.path.basename(path))
 
     # Convert to string so can easily serialize
-    library_bytes = zip_buffer.getvalue()
-    zip_buffer.close()
+    library_bytes = library_buffer.getvalue()
+    library_buffer.close()
 
     print(f"Serialize: {m.__name__}")
     print(f"\tmodule zip file length: {len(module_bytes)}")
