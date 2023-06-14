@@ -11,6 +11,7 @@ import inspect
 import io
 import os
 from pathlib import Path
+import tarfile
 from types import ModuleType
 import time
 import zipfile
@@ -98,21 +99,17 @@ class ProxyModule(lop.Proxy):
             zip_files = deserialize(b)
 
             module_bytes = zip_files["module"]
-            if not zip_files["extract"]:
-                with open(f"{self.package_path}/{name}.zip",'wb', 100*(2**20)) as local_archive:
-                    local_archive.write(module_bytes)
-            else:
-                print("Extracting zip file")
-                zip_buffer = io.BytesIO(module_bytes)
-                with zipfile.ZipFile(zip_buffer, "r") as fzip:
-                    fzip.extractall(path=self.package_path)
+            print("Extracting zip file")
+            zip_buffer = io.BytesIO(module_bytes)
+            with zipfile.ZipFile(zip_buffer, "r") as fzip:
+                fzip.extractall(path=self.package_path)
 
             library_buffer = io.BytesIO(zip_files["libraries"])
             library_path = os.path.join(self.package_path, "libraries")
-            with zipfile.ZipFile(library_buffer, "r") as fzip:
-                for file_ in fzip.namelist():
+            with tarfile.open(fileobj=library_buffer, mode="r|") as f:
+                for file_ in f:
                     try:
-                        fzip.extract(file_, path=library_path)
+                        f.extract(file_, path=library_path)
                     except IOError as e:
                         pass
 
@@ -138,11 +135,7 @@ class ProxyModule(lop.Proxy):
         if not self.file_unpack.done():
             self.unpack(self.proxy, name)
         
-        if os.path.isfile(f"{self.package_path}/{name}.zip"):
-            archivepath = f"{self.package_path}/{name}.zip"
-            importer = zipimport.zipimporter(archivepath)
-            spec = importer.find_spec(name)
-        elif os.path.isfile(f"{self.package_path}/{name}/__init__.py"):
+        if os.path.isfile(f"{self.package_path}/{name}/__init__.py"):
             module_path = f"{self.package_path}/{name}/__init__.py"
             loader = importlib.machinery.SourceFileLoader(name, module_path)
             spec = importlib.util.spec_from_loader(name, loader)
