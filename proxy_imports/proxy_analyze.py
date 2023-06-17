@@ -172,4 +172,4 @@ def analyze_func_and_create_proxies(func, config: Optional[Union[dict[str, Any],
     if func_module and func_module.__name__ != "__main__":
         imports.add(_strip_dots(func_module.__name__))
     
-    return store_modules(list(imports), config)
+    return store_modules(list(imports), config=config)
