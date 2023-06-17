@@ -1,7 +1,6 @@
 """Implementation of lazy importing ad moving via proxies"""
 import ast
-from concurrent.futures import Future
-from concurrent.futures import ThreadPoolExecutor
+from threading import Thread
 import sys
 import importlib
 from importlib import abc
@@ -16,6 +15,8 @@ from types import ModuleType
 import time
 import zipfile
 import zipimport
+import asyncio
+from asyncio import Future
 
 from proxystore.proxy import Proxy, resolve, is_resolved
 from proxystore.store import Store, get_store, register_store
@@ -23,20 +24,16 @@ from proxystore.serialize import deserialize
 
 import lazy_object_proxy.slots as lop
 
-_default_pool = ThreadPoolExecutor()
-
 class ProxyModule(lop.Proxy):
     """ Wraps a proxy of a tar of a module to behave like the proxy of a module
     Adds the necessary features to avoid resolving the module unnecessarily.
     """
 
-    def __init__(self, proxy: Proxy, name: str, package_path: str, proxy_attributes: bool = False):
+    def __init__(self, file_future: Future, name: str, package_path: str):
         object.__setattr__(self, '__path__', None)
-        object.__setattr__(self, 'proxy', proxy)
         object.__setattr__(self, 'name', None)
         object.__setattr__(self, "package_path", package_path)
         object.__setattr__(self, "submodules", dict())
-        object.__setattr__(self, "proxy_attributes", proxy_attributes)
 
         package, _, submod = name.partition('.')
         if submod:
@@ -44,8 +41,7 @@ class ProxyModule(lop.Proxy):
             object.__setattr__(self, '__factory__', lambda: self.load_module(name, package))
         else:
             # Is a package
-            unpack_future = _default_pool.submit(self.unpack, proxy, name)
-            object.__setattr__(self, "file_unpack", unpack_future)
+            object.__setattr__(self, "file_unpack", file_future)
             object.__setattr__(self, '__factory__', lambda: self.load_package(name))
 
     @property
@@ -79,61 +75,11 @@ class ProxyModule(lop.Proxy):
         
         if name in ["__name__", "__loader__", "__package__", "__spec__", "__path__", "__cached__"]:
             return object.__getattribute__(self, name)
-
-        if self.proxy_attributes:
-            # Occassionally breaks things. Specifically when importing types.
-            # Maybe a way around this using metaclasses: 
-            # https://stackoverflow.com/questions/100003/what-are-metaclasses-in-python
-            # but I haven't been able to figure it out yet
-            def resolve_attr():
-                resolve(self)
-                return getattr(self, name)
-            return lop.Proxy(resolve_attr)
-
         return super().__getattr__(name)
-
-    def unpack(self, proxy: Proxy, name: str) -> None:
-        """Unpacks the tar file into the correct place"""
-
-        def deserialize_and_untar(b: bytes):
-            zip_files = deserialize(b)
-
-            module_bytes = zip_files["module"]
-            print("Extracting zip file")
-            zip_buffer = io.BytesIO(module_bytes)
-            with zipfile.ZipFile(zip_buffer, "r") as fzip:
-                fzip.extractall(path=self.package_path)
-
-            library_buffer = io.BytesIO(zip_files["libraries"])
-            library_path = os.path.join(self.package_path, "libraries")
-            with tarfile.open(fileobj=library_buffer, mode="r|") as f:
-                for file_ in f:
-                    try:
-                        f.extract(file_, path=library_path)
-                    except IOError as e:
-                        pass
-
-            return "Done"
-    
-        started_file = Path(f"{self.package_path}/{name}.tmp")
-        finished_file = Path(f"{self.package_path}/{name}_done.tmp")
-        try:
-            # Prevent multiple tasks from extracting proxy
-            started_file.touch(exist_ok=False)
-            proxy.__factory__.deserializer = deserialize_and_untar
-            resolve(proxy)
-            finished_file.touch()
-        except FileExistsError as e:
-            # Wait for package to finish extracting before continuing
-            while (not finished_file.exists()):
-                time.sleep(1)
-        
-        return "Done"
     
     def load_package(self, name: str):
         """Factory method for a package"""
-        if not self.file_unpack.done():
-            self.unpack(self.proxy, name)
+        self.file_unpack.result()
         
         if os.path.isfile(f"{self.package_path}/{name}/__init__.py"):
             module_path = f"{self.package_path}/{name}/__init__.py"
@@ -212,14 +158,56 @@ class ProxyModule(lop.Proxy):
         self.add_submodules(module)
         return module
 
+
+async def unpack(proxy: Proxy, name: str, package_path: str) -> None:
+    """Unpacks the tar file into the correct place"""
+    def deserialize_and_untar(b: bytes):
+        zip_files = deserialize(b)
+
+        module_bytes = zip_files["module"]
+        zip_buffer = io.BytesIO(module_bytes)
+        with zipfile.ZipFile(zip_buffer, "r") as fzip:
+            fzip.extractall(path=package_path)
+
+        library_buffer = io.BytesIO(zip_files["libraries"])
+        library_path = os.path.join(package_path, "libraries")
+        with tarfile.open(fileobj=library_buffer, mode="r|") as f:
+            for file_ in f:
+                try:
+                    f.extract(file_, path=library_path)
+                except IOError as e:
+                    pass
+
+        return "Done"
+
+    started_file = Path(f"{package_path}/{name}.tmp")
+    finished_file = Path(f"{package_path}/{name}_done.tmp")
+    try:
+        # Prevent multiple tasks from extracting proxy
+        started_file.touch(exist_ok=False)
+        proxy.__factory__.deserializer = deserialize_and_untar
+        resolve(proxy)
+        finished_file.touch()
+    except FileExistsError as e:
+        # Wait for package to finish extracting before continuing
+        while (not finished_file.exists()):
+            await asyncio.sleep(0.2)
+    
+    return "Done"
+
+async def stop_loop(futures, loop):
+    for f in futures:
+        await asyncio.wrap_future(f)
+    loop.stop()
+
 # Adapted from: https://gist.github.com/rmcgibbo/28bcf323ee0a0e482f52339701390f28
 class ProxyImporter(importlib.abc.MetaPathFinder, importlib.abc.Loader):
     _proxied_modules: dict[str, Proxy]
 
     def __init__(self, proxied_modules: dict[str, Proxy], package_path: str):
-        self._proxied_modules = proxied_modules
-        
         Path(package_path).mkdir(parents=True, exist_ok=True)
+        sys.path.insert(0, package_path)
+        self.package_path = package_path
 
         # Path for shared libraries, must be added to LD_LIBRARY_PATH at startup
         # This can't be done from inside python because the environment has already
@@ -227,8 +215,18 @@ class ProxyImporter(importlib.abc.MetaPathFinder, importlib.abc.Loader):
         library_path = os.path.join(package_path, "libraries")
         Path(library_path).mkdir(exist_ok=True)
 
-        sys.path.insert(0, package_path)
-        self.package_path = package_path
+        self.loop  = asyncio.new_event_loop()
+        def run_loop(loop):
+            asyncio.set_event_loop(loop)
+            loop.run_forever()
+        self.unpack_thread = Thread(target=run_loop, args=(self.loop,))
+        self.unpack_thread.start()
+
+        futures = dict()
+        for name, proxy in proxied_modules.items():
+            futures[name] = asyncio.run_coroutine_threadsafe(unpack(proxy, name, package_path), self.loop)
+        self.end = asyncio.run_coroutine_threadsafe(stop_loop(list(futures.values()), self.loop), self.loop)
+        self._proxied_modules = futures     
 
     def find_module(self, fullname, path=None):
         spec = self.find_spec(fullname, path)
