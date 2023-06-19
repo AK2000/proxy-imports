@@ -25,39 +25,20 @@ from PyInstaller.compat import is_pure_conda
 def _serialize_module(m: ModuleType) -> dict[str, bytes]:
     """ Method used to turn module into serialized bitstring"""
     
-    extract = False
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w") as fzip:
-        try:
-            module_path = inspect.getfile(m)
-            if os.path.basename(module_path) == "__init__.py":
-                dirpath = Path(module_path).parent.absolute()
-                basedir = os.path.dirname(dirpath) + '/' 
-                for root, dirs, files in os.walk(dirpath):
-                    if os.path.basename(root)[0] == '.':
-                        continue #skip hidden directories        
-                    dirname = root.replace(basedir, '')
-                    for f in files:
-                        if f[-1] == '~' or (f[0] == '.' and f != '.htaccess'):
-                            #skip backup files and all hidden files except .htaccess
-                            continue
-                        if f.endswith(".so") or f.endswith(".pyd"):
-                            extract = True
+    try:
+        module_path = inspect.getfile(m)
+        if os.path.basename(module_path) == "__init__.py":
+            module_path = Path(module_path).parent.absolute()
+    except:
+        module_path = m.__path__[0]
 
-                        fzip.write(root + '/' + f, dirname + '/' + f)
-            else:
-                fzip.write(module_path, os.path.basename(module_path))
-                if module_path.endswith(".so") or module_path.endswith(".pyd"):
-                    extract = True
-        except:
-            module_path = m.__path__[0]
-            fzip.write(module_path, os.path.basename(module_path))
-            if module_path.endswith(".so") or module_path.endswith(".pyd"):
-                extract = True
+    module_buffer = io.BytesIO()
+    with tarfile.open(fileobj=module_buffer, mode="w") as f:
+        f. add(module_path, arcname=os.path.basename(module_path))
 
     # Convert to string so can easily serialize
-    module_bytes = zip_buffer.getvalue()
-    zip_buffer.close()
+    module_bytes = module_buffer.getvalue()
+    module_buffer.close()
 
     # Possible solution for libraries, but seems to be overly inclusive?
     libraries = collect_dynamic_libs(m.__name__)
@@ -80,7 +61,7 @@ def _serialize_module(m: ModuleType) -> dict[str, bytes]:
     print(f"\tmodule zip file length: {len(module_bytes)}")
     print(f"\tlibrary zip file length: {len(library_bytes)}")
 
-    return {"module": module_bytes, "extract": extract, "libraries": library_bytes}
+    return {"module": module_bytes, "libraries": library_bytes}
 
 def load_config(config: Optional[Union[dict[str, Any], str]] = None):
     if config is None or type(config) == str:
