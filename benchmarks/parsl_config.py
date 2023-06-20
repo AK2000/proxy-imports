@@ -9,7 +9,7 @@ def make_config_perlmutter(nodes: int = 0, method: str = "file_system") -> parsl
     if nodes > 1:
         provider.launcher = parsl.launchers.SrunLauncher(overrides='-K0 -k')
         provider.nodes_per_block = nodes
-    executor = parsl.HighThroughputExecutor(provider=provider)
+    executor = parsl.HighThroughputExecutor(provider=provider, proxy_modules = (method == "lazy"))
 
     config = parsl.config.Config(
        executors=[ executor ],
@@ -29,7 +29,8 @@ def make_config_theta(nodes: int = 0, method: str = "file_system") -> parsl.conf
     executor = parsl.HighThroughputExecutor(
         cpu_affinity="block",
         max_workers=64,
-        provider=provider
+        provider=provider,
+        proxy_modules= (method == "lazy")
     )
 
     config = parsl.config.Config(

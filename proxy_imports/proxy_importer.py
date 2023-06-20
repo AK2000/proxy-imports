@@ -165,9 +165,9 @@ async def unpack(proxy: Proxy, name: str, package_path: str) -> None:
         zip_files = deserialize(b)
 
         module_bytes = zip_files["module"]
-        zip_buffer = io.BytesIO(module_bytes)
-        with zipfile.ZipFile(zip_buffer, "r") as fzip:
-            fzip.extractall(path=package_path)
+        module_buffer = io.BytesIO(module_bytes)
+        with tarfile.open(fileobj=module_buffer, mode="r") as f:
+            f.extractall(path=package_path)
 
         library_buffer = io.BytesIO(zip_files["libraries"])
         library_path = os.path.join(package_path, "libraries")
