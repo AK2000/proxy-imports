@@ -1,0 +1,211 @@
+{"import_time": 0.5390032510040328, "rtt": 2.6194826860155445, "package_size": 1}
+{"import_time": 1.0182017179904506, "rtt": 1.9614152119902428, "package_size": 2}
+{"import_time": 1.4880160530010471, "rtt": 2.4544119040074293, "package_size": 3}
+{"import_time": 2.0273925429937663, "rtt": 4.601174946990795, "package_size": 4}
+{"import_time": 2.730750471993815, "rtt": 4.662676341016777, "package_size": 5}
+{"import_time": 3.0234734830009984, "rtt": 5.609873697016155, "package_size": 6}
+{"import_time": 3.624243012003717, "rtt": 5.179010466992622, "package_size": 7}
+{"import_time": 4.377496887987945, "rtt": 6.7046158779994585, "package_size": 8}
+{"import_time": 4.5679318369948305, "rtt": 6.78432828898076, "package_size": 9}
+{"import_time": 5.177436304991716, "rtt": 7.168051326996647, "package_size": 10}
+{"import_time": 0.5250262699992163, "rtt": 3.182748741004616, "package_size": 1}
+{"import_time": 0.5187528919923352, "rtt": 1.42077576398151, "package_size": 1}
+{"import_time": 0.5468043690052582, "rtt": 1.5633633460092824, "package_size": 1}
+{"import_time": 0.5499147440132219, "rtt": 1.4972789800085593, "package_size": 1}
+{"import_time": 0.5526781840017065, "rtt": 1.4273900580010377, "package_size": 1}
+{"import_time": 0.5177843790006591, "rtt": 1.4793286040076055, "package_size": 1}
+{"import_time": 0.5709530300082406, "rtt": 1.4196351320133545, "package_size": 1}
+{"import_time": 0.5267578829952981, "rtt": 1.3953545270196628, "package_size": 1}
+{"import_time": 0.5191919409990078, "rtt": 1.4005953070009127, "package_size": 1}
+{"import_time": 0.520735832003993, "rtt": 1.6366618330066558, "package_size": 1}
+{"import_time": 1.159600031998707, "rtt": 2.0198117840045597, "package_size": 2}
+{"import_time": 1.1396609709918266, "rtt": 1.9169558170251548, "package_size": 2}
+{"import_time": 1.1017198399931658, "rtt": 1.9672124610224273, "package_size": 2}
+{"import_time": 1.0810170649929205, "rtt": 1.9364994180214126, "package_size": 2}
+{"import_time": 1.0808258470060537, "rtt": 2.1997261389915366, "package_size": 2}
+{"import_time": 1.0546249190083472, "rtt": 2.120900874986546, "package_size": 2}
+{"import_time": 1.0811426880100043, "rtt": 2.0115134450024925, "package_size": 2}
+{"import_time": 1.0943443139985902, "rtt": 1.9277755139919464, "package_size": 2}
+{"import_time": 1.0677994529978605, "rtt": 2.0507185230089817, "package_size": 2}
+{"import_time": 1.0601771189976716, "rtt": 1.9733405349834356, "package_size": 2}
+{"import_time": 1.6282868439884624, "rtt": 3.574471783998888, "package_size": 3}
+{"import_time": 1.7307717930088984, "rtt": 2.4793270470108837, "package_size": 3}
+{"import_time": 1.6809888880088693, "rtt": 2.4164602349919733, "package_size": 3}
+{"import_time": 1.6790471870044712, "rtt": 2.8149117499997374, "package_size": 3}
+{"import_time": 1.5456029100023443, "rtt": 2.557760907977354, "package_size": 3}
+{"import_time": 1.5156523680052487, "rtt": 2.3975731859973166, "package_size": 3}
+{"import_time": 1.5168842600105563, "rtt": 2.450905937992502, "package_size": 3}
+{"import_time": 1.5675655769882724, "rtt": 2.5157235320075415, "package_size": 3}
+{"import_time": 1.5906722259969683, "rtt": 2.421430574991973, "package_size": 3}
+{"import_time": 1.6127216930035502, "rtt": 2.413652415998513, "package_size": 3}
+{"import_time": 2.2003500360006, "rtt": 4.022759858024074, "package_size": 4}
+{"import_time": 2.210346865991596, "rtt": 3.302208143984899, "package_size": 4}
+{"import_time": 2.175926095005707, "rtt": 3.3043255569937173, "package_size": 4}
+{"import_time": 2.0918106300086947, "rtt": 2.921636163024232, "package_size": 4}
+{"import_time": 2.1141260779986624, "rtt": 3.066162778995931, "package_size": 4}
+{"import_time": 2.108104304992594, "rtt": 3.0628181789943483, "package_size": 4}
+{"import_time": 2.1237142469908576, "rtt": 3.5746847830014303, "package_size": 4}
+{"import_time": 2.0633092659991235, "rtt": 3.02175567400991, "package_size": 4}
+{"import_time": 2.108834763013874, "rtt": 3.032695771980798, "package_size": 4}
+{"import_time": 2.0609492790099466, "rtt": 2.9654237020004075, "package_size": 4}
+{"import_time": 2.582652261000476, "rtt": 4.952125959011028, "package_size": 5}
+{"import_time": 2.704413407991524, "rtt": 3.377018308994593, "package_size": 5}
+{"import_time": 2.7115631679916987, "rtt": 3.5071746849862393, "package_size": 5}
+{"import_time": 2.7478240100026596, "rtt": 3.4401803580112755, "package_size": 5}
+{"import_time": 2.649544453000999, "rtt": 3.5273673799820244, "package_size": 5}
+{"import_time": 2.671207327992306, "rtt": 3.6225572390249, "package_size": 5}
+{"import_time": 2.703761877011857, "rtt": 3.50540562698734, "package_size": 5}
+{"import_time": 2.6997841780103045, "rtt": 3.4077219809987582, "package_size": 5}
+{"import_time": 2.6725122510106303, "rtt": 3.6674488699936774, "package_size": 5}
+{"import_time": 2.598045036997064, "rtt": 3.5399821489991155, "package_size": 5}
+{"import_time": 3.095521244002157, "rtt": 5.639484780986095, "package_size": 6}
+{"import_time": 3.194518264994258, "rtt": 4.096783790999325, "package_size": 6}
+{"import_time": 3.240264311010833, "rtt": 4.016498409007909, "package_size": 6}
+{"import_time": 3.25423411099473, "rtt": 3.9174006499815732, "package_size": 6}
+{"import_time": 3.2370316209999146, "rtt": 4.085617910983274, "package_size": 6}
+{"import_time": 3.2149080029921606, "rtt": 3.9541058730101213, "package_size": 6}
+{"import_time": 3.2255740860127844, "rtt": 4.02642067198758, "package_size": 6}
+{"import_time": 3.281970812007785, "rtt": 3.9313758540083654, "package_size": 6}
+{"import_time": 3.2516173879994312, "rtt": 3.994874081981834, "package_size": 6}
+{"import_time": 3.11328459699871, "rtt": 3.9343335760058835, "package_size": 6}
+{"import_time": 3.669132786002592, "rtt": 5.044130948022939, "package_size": 7}
+{"import_time": 3.538448724997579, "rtt": 4.59662903600838, "package_size": 7}
+{"import_time": 3.7335983859957196, "rtt": 4.457888642005855, "package_size": 7}
+{"import_time": 3.6457427199929953, "rtt": 4.646784219978144, "package_size": 7}
+{"import_time": 3.5067467109911377, "rtt": 4.51423480300582, "package_size": 7}
+{"import_time": 3.61260917900654, "rtt": 4.510921875014901, "package_size": 7}
+{"import_time": 3.778681958996458, "rtt": 4.399141043017153, "package_size": 7}
+{"import_time": 3.5963631389895454, "rtt": 4.396851427009096, "package_size": 7}
+{"import_time": 3.548461377999047, "rtt": 4.589933467010269, "package_size": 7}
+{"import_time": 3.559196162997978, "rtt": 4.449524224997731, "package_size": 7}
+{"import_time": 4.087361719008186, "rtt": 6.171649350988446, "package_size": 8}
+{"import_time": 4.060076323992689, "rtt": 5.154809320025379, "package_size": 8}
+{"import_time": 4.0325914840068435, "rtt": 4.9288443330151495, "package_size": 8}
+{"import_time": 4.087237241998082, "rtt": 4.921740406018216, "package_size": 8}
+{"import_time": 4.22286311800417, "rtt": 5.027216450980632, "package_size": 8}
+{"import_time": 4.170790894000675, "rtt": 5.0097406819986645, "package_size": 8}
+{"import_time": 3.978536422000616, "rtt": 4.9084140449995175, "package_size": 8}
+{"import_time": 4.238928348000627, "rtt": 4.919579926005099, "package_size": 8}
+{"import_time": 4.265112222987227, "rtt": 4.901429802004714, "package_size": 8}
+{"import_time": 4.144079311998212, "rtt": 5.2009591839741915, "package_size": 8}
+{"import_time": 4.765907992987195, "rtt": 7.217957043991191, "package_size": 9}
+{"import_time": 4.488519455000642, "rtt": 5.642142449010862, "package_size": 9}
+{"import_time": 4.809435573988594, "rtt": 5.421351713011973, "package_size": 9}
+{"import_time": 4.701003677997505, "rtt": 5.432610151998233, "package_size": 9}
+{"import_time": 4.650588602002244, "rtt": 5.4309725539933424, "package_size": 9}
+{"import_time": 4.5440575130051, "rtt": 5.395196271012537, "package_size": 9}
+{"import_time": 4.813911393008311, "rtt": 5.447406163002597, "package_size": 9}
+{"import_time": 4.8157729060039856, "rtt": 5.512493588990765, "package_size": 9}
+{"import_time": 4.5765923769940855, "rtt": 5.765488600998651, "package_size": 9}
+{"import_time": 4.6543685009964975, "rtt": 5.691710258019157, "package_size": 9}
+{"import_time": 5.261174146013218, "rtt": 6.523936729005072, "package_size": 10}
+{"import_time": 4.974679635997745, "rtt": 6.043514680000953, "package_size": 10}
+{"import_time": 5.385504044010304, "rtt": 6.182390147005208, "package_size": 10}
+{"import_time": 5.414625921999686, "rtt": 6.258139526005834, "package_size": 10}
+{"import_time": 5.360174721994554, "rtt": 5.907930410001427, "package_size": 10}
+{"import_time": 4.899951495011919, "rtt": 5.930371658003423, "package_size": 10}
+{"import_time": 5.324350340000819, "rtt": 5.8989257590146735, "package_size": 10}
+{"import_time": 4.989906909002457, "rtt": 5.8883992829942144, "package_size": 10}
+{"import_time": 5.152716130003682, "rtt": 6.2747763480001595, "package_size": 10}
+{"import_time": 5.1185195409925655, "rtt": 5.9155778769927565, "package_size": 10}
+{"import_time": 0.06592213801923208, "rtt": 2.2947863549925387, "method": "file_system", "package_size": 1}
+{"import_time": 0.06526330899214372, "rtt": 2.0972018800093792, "method": "file_system", "package_size": 1}
+{"import_time": 0.06596755801001564, "rtt": 0.9435321560013108, "method": "file_system", "package_size": 1}
+{"import_time": 0.06565907600452192, "rtt": 1.3799367009778507, "method": "file_system", "package_size": 1}
+{"import_time": 0.06610183900920674, "rtt": 0.9968762769713067, "method": "file_system", "package_size": 1}
+{"import_time": 0.0661861700064037, "rtt": 0.9805584960267879, "method": "file_system", "package_size": 1}
+{"import_time": 0.06665101199178025, "rtt": 0.9552379199885763, "method": "file_system", "package_size": 1}
+{"import_time": 0.06472210001084022, "rtt": 1.0168536530109122, "method": "file_system", "package_size": 1}
+{"import_time": 0.0667801009840332, "rtt": 1.0910803730366752, "method": "file_system", "package_size": 1}
+{"import_time": 0.06685645197285339, "rtt": 1.0932888629613444, "method": "file_system", "package_size": 1}
+{"import_time": 0.06578043999616057, "rtt": 1.003971742989961, "method": "file_system", "package_size": 1}
+{"import_time": 0.13051006800378673, "rtt": 0.9865971499821171, "method": "file_system", "package_size": 2}
+{"import_time": 0.12976047000847757, "rtt": 1.2449765299679711, "method": "file_system", "package_size": 2}
+{"import_time": 0.13543167899479158, "rtt": 1.16844876203686, "method": "file_system", "package_size": 2}
+{"import_time": 0.1291811490082182, "rtt": 1.1527157920063473, "method": "file_system", "package_size": 2}
+{"import_time": 0.1312494610028807, "rtt": 1.7178496340056881, "method": "file_system", "package_size": 2}
+{"import_time": 0.1342404299939517, "rtt": 1.0370792300091125, "method": "file_system", "package_size": 2}
+{"import_time": 0.12957580198417418, "rtt": 1.6753753279917873, "method": "file_system", "package_size": 2}
+{"import_time": 0.13107963500078768, "rtt": 0.9853310260223225, "method": "file_system", "package_size": 2}
+{"import_time": 0.13136184998438694, "rtt": 1.0392961119650863, "method": "file_system", "package_size": 2}
+{"import_time": 0.13256960999569856, "rtt": 1.012626847019419, "method": "file_system", "package_size": 2}
+{"import_time": 0.2050079180044122, "rtt": 0.9741341210319661, "method": "file_system", "package_size": 3}
+{"import_time": 0.19505248600034975, "rtt": 1.0907975329901092, "method": "file_system", "package_size": 3}
+{"import_time": 0.19322800001828, "rtt": 1.243558802001644, "method": "file_system", "package_size": 3}
+{"import_time": 0.19357876398134977, "rtt": 1.0090188159956597, "method": "file_system", "package_size": 3}
+{"import_time": 0.19583581300685182, "rtt": 1.0790830469923094, "method": "file_system", "package_size": 3}
+{"import_time": 0.1928663729922846, "rtt": 1.0655280650244094, "method": "file_system", "package_size": 3}
+{"import_time": 0.1962779450113885, "rtt": 1.131136946962215, "method": "file_system", "package_size": 3}
+{"import_time": 0.19885772597626783, "rtt": 0.9625368919805624, "method": "file_system", "package_size": 3}
+{"import_time": 0.19616666401270777, "rtt": 0.9769867419963703, "method": "file_system", "package_size": 3}
+{"import_time": 0.19440607400611043, "rtt": 0.9564026749576442, "method": "file_system", "package_size": 3}
+{"import_time": 0.2671721030201297, "rtt": 0.9890470920363441, "method": "file_system", "package_size": 4}
+{"import_time": 0.26220721198478714, "rtt": 1.0005551550420932, "method": "file_system", "package_size": 4}
+{"import_time": 0.25761814700672403, "rtt": 1.2752903110231273, "method": "file_system", "package_size": 4}
+{"import_time": 0.26445777298067696, "rtt": 1.129494282999076, "method": "file_system", "package_size": 4}
+{"import_time": 0.26148592701065354, "rtt": 1.5566825629794039, "method": "file_system", "package_size": 4}
+{"import_time": 0.26263588800793514, "rtt": 1.0002136360271834, "method": "file_system", "package_size": 4}
+{"import_time": 0.2569238859869074, "rtt": 0.9810398159897886, "method": "file_system", "package_size": 4}
+{"import_time": 0.26392059901263565, "rtt": 0.9544154009781778, "method": "file_system", "package_size": 4}
+{"import_time": 0.2598398159898352, "rtt": 1.620922168949619, "method": "file_system", "package_size": 4}
+{"import_time": 0.2696476450073533, "rtt": 1.1091657539946027, "method": "file_system", "package_size": 4}
+{"import_time": 0.33026096399407834, "rtt": 1.946114383987151, "method": "file_system", "package_size": 5}
+{"import_time": 0.3287913579843007, "rtt": 0.9587550190044567, "method": "file_system", "package_size": 5}
+{"import_time": 0.3269877650018316, "rtt": 1.149416426953394, "method": "file_system", "package_size": 5}
+{"import_time": 0.32543108199024573, "rtt": 1.0991883979877457, "method": "file_system", "package_size": 5}
+{"import_time": 0.3360320480132941, "rtt": 1.1195347869652323, "method": "file_system", "package_size": 5}
+{"import_time": 0.3257972499995958, "rtt": 0.9468704989994876, "method": "file_system", "package_size": 5}
+{"import_time": 0.32697185402503237, "rtt": 1.0848677100148052, "method": "file_system", "package_size": 5}
+{"import_time": 0.3255876589973923, "rtt": 0.930121704004705, "method": "file_system", "package_size": 5}
+{"import_time": 0.33060037897666916, "rtt": 1.0327314399764873, "method": "file_system", "package_size": 5}
+{"import_time": 0.31965350097743794, "rtt": 0.9730926239863038, "method": "file_system", "package_size": 5}
+{"import_time": 0.40453830402111635, "rtt": 1.257250708003994, "method": "file_system", "package_size": 6}
+{"import_time": 0.3901502020016778, "rtt": 0.9822962090256624, "method": "file_system", "package_size": 6}
+{"import_time": 0.39239035500213504, "rtt": 0.9898325920221396, "method": "file_system", "package_size": 6}
+{"import_time": 0.3999972650199197, "rtt": 1.2105032309773378, "method": "file_system", "package_size": 6}
+{"import_time": 0.39531956298742443, "rtt": 0.9818033259944059, "method": "file_system", "package_size": 6}
+{"import_time": 0.3991881800175179, "rtt": 1.210217259998899, "method": "file_system", "package_size": 6}
+{"import_time": 0.3834869030106347, "rtt": 1.0411011569667608, "method": "file_system", "package_size": 6}
+{"import_time": 0.3884256409946829, "rtt": 0.962743726966437, "method": "file_system", "package_size": 6}
+{"import_time": 0.3943353289796505, "rtt": 1.0617949519655667, "method": "file_system", "package_size": 6}
+{"import_time": 0.39192234800430015, "rtt": 1.1907634590170346, "method": "file_system", "package_size": 6}
+{"import_time": 0.46056613299879245, "rtt": 1.018058056011796, "method": "file_system", "package_size": 7}
+{"import_time": 0.4659424669807777, "rtt": 1.0107066199998371, "method": "file_system", "package_size": 7}
+{"import_time": 0.46558760199695826, "rtt": 0.9747082550311461, "method": "file_system", "package_size": 7}
+{"import_time": 0.4444795160088688, "rtt": 0.9685568140121177, "method": "file_system", "package_size": 7}
+{"import_time": 0.45770384301431477, "rtt": 1.1632061889977194, "method": "file_system", "package_size": 7}
+{"import_time": 0.4649044709804002, "rtt": 1.0354591269860975, "method": "file_system", "package_size": 7}
+{"import_time": 0.46098551497561857, "rtt": 1.1838182070059702, "method": "file_system", "package_size": 7}
+{"import_time": 0.44255094599793665, "rtt": 1.002711752022151, "method": "file_system", "package_size": 7}
+{"import_time": 0.44732509599998593, "rtt": 1.078113152005244, "method": "file_system", "package_size": 7}
+{"import_time": 0.45398479301366024, "rtt": 1.1181589660118334, "method": "file_system", "package_size": 7}
+{"import_time": 0.5390369099914096, "rtt": 1.0366919049993157, "method": "file_system", "package_size": 8}
+{"import_time": 0.5257050540240016, "rtt": 0.9338254670146853, "method": "file_system", "package_size": 8}
+{"import_time": 0.5180619210004807, "rtt": 0.9559082590276375, "method": "file_system", "package_size": 8}
+{"import_time": 0.5212427750229836, "rtt": 1.0979731499683112, "method": "file_system", "package_size": 8}
+{"import_time": 0.5246146320132539, "rtt": 1.1282761089969426, "method": "file_system", "package_size": 8}
+{"import_time": 0.5139068970165681, "rtt": 1.2259239080012776, "method": "file_system", "package_size": 8}
+{"import_time": 0.5245887479977682, "rtt": 1.1046152700437233, "method": "file_system", "package_size": 8}
+{"import_time": 0.509185258008074, "rtt": 1.0457055530278012, "method": "file_system", "package_size": 8}
+{"import_time": 0.5227154110034462, "rtt": 1.0610514390282333, "method": "file_system", "package_size": 8}
+{"import_time": 0.5097040879772976, "rtt": 1.0423924619681202, "method": "file_system", "package_size": 8}
+{"import_time": 0.5910757539968472, "rtt": 1.197033674980048, "method": "file_system", "package_size": 9}
+{"import_time": 0.5923419950122479, "rtt": 1.3290959119913168, "method": "file_system", "package_size": 9}
+{"import_time": 0.5727074790047482, "rtt": 1.2072525570401922, "method": "file_system", "package_size": 9}
+{"import_time": 0.582429577014409, "rtt": 1.283950740005821, "method": "file_system", "package_size": 9}
+{"import_time": 0.5887164779996965, "rtt": 0.9815052640042268, "method": "file_system", "package_size": 9}
+{"import_time": 0.5907987510145176, "rtt": 1.5325935009750538, "method": "file_system", "package_size": 9}
+{"import_time": 0.5861497559817508, "rtt": 1.496741276991088, "method": "file_system", "package_size": 9}
+{"import_time": 0.5861812259827275, "rtt": 1.0781317260116339, "method": "file_system", "package_size": 9}
+{"import_time": 0.5785026300000027, "rtt": 1.2990401450078934, "method": "file_system", "package_size": 9}
+{"import_time": 0.5778264020045754, "rtt": 1.273375466989819, "method": "file_system", "package_size": 9}
+{"import_time": 0.6734518220182508, "rtt": 1.5701232550200075, "method": "file_system", "package_size": 10}
+{"import_time": 0.6489933850243688, "rtt": 1.2189251800300553, "method": "file_system", "package_size": 10}
+{"import_time": 0.6427386190043762, "rtt": 1.1042435899726115, "method": "file_system", "package_size": 10}
+{"import_time": 0.635017468011938, "rtt": 1.1188173089758493, "method": "file_system", "package_size": 10}
+{"import_time": 0.6590931839891709, "rtt": 1.2128443899564445, "method": "file_system", "package_size": 10}
+{"import_time": 0.6394739070092328, "rtt": 1.0879033639794216, "method": "file_system", "package_size": 10}
+{"import_time": 0.6561717530130409, "rtt": 1.5109887230210006, "method": "file_system", "package_size": 10}
+{"import_time": 0.6539636930101551, "rtt": 1.603287156962324, "method": "file_system", "package_size": 10}
+{"import_time": 0.651387858990347, "rtt": 1.6719922609627247, "method": "file_system", "package_size": 10}
+{"import_time": 0.6481235240062233, "rtt": 1.1418726689880714, "method": "file_system", "package_size": 10}
