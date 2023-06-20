@@ -1,7 +1,7 @@
 #!/bin/bash
-cd /lus/swift/home/alokvk2/lazy-imports
+cd /lus/swift/home/alokvk2/lazy-imports/benchmarks
 source setup.sh
-export BLOCKSIZE=$COBALT_BLOCKSIZE
+export BLOCKSIZE=$COBALT_JOBSIZE
 
 for nodes in 16; do
 	for workers_per_node in 4; do
@@ -11,7 +11,7 @@ for nodes in 16; do
 				echo "Running ${method} nodes ${nodes}, workers per node ${workers_per_node}"
 				for rep in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30; do 
 				   	echo "Repition ${rep}"
-					python benchmarks/ml_inference.py \
+					python ml_inference.py \
 						--workers ${workers} \
 						--nodes ${nodes} \
 						--method ${method} \

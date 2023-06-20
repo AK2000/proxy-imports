@@ -8,13 +8,13 @@ export BLOCKSIZE=${SLURM_NNODES}
 tasks_per_node=64
 tasks=$((${tasks_per_node} * ${SLURM_NNODES}))
 for package_size in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
-    python benchmarks/create_simulated_package.py ${package_size}
+    python create_simulated_package.py ${package_size}
     cd simulated_package
     pip install .
     cd ..
     for method in "lazy" "file_system" "conda_pack"; do
         echo "Running ${method} with package size ${package_size}"
-        python benchmarks/scaling_test.py \
+        python scaling_test.py \
             --ntsks ${tasks} \
             --nodes ${SLURM_NNODES} \
             --method ${method} \

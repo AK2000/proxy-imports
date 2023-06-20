@@ -4,7 +4,7 @@ import proxy_imports
 import json
 import argparse
 
-@proxy_imports.proxy_transform(config_path="benchmarks/cloud_bursting_config.py")
+@proxy_imports.proxy_transform(config_path="cloud_bursting_config.py")
 def time_import():
     import time
 
