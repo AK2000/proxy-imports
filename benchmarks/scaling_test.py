@@ -1,5 +1,6 @@
 import argparse
 import faulthandler
+import functools
 import importlib
 import inspect
 import io
@@ -26,7 +27,7 @@ import conda.cli.python_api
 from conda.cli.python_api import Commands
 import conda_pack
 
-from proxy_imports import proxy_transform
+from proxy_imports import proxy_transform, analyze_func_and_create_proxies
 
 def setup_import(
             module_name: str, 
@@ -81,11 +82,6 @@ def import_module():
     elif method == "lazy":
         code = \
             """
-import parsl
-from proxy_imports import proxy_transform
-
-@parsl.python_app
-@proxy_transform
 def import_module():
     '''Parsl app that imports a module and accesses its name'''
     import time
@@ -104,8 +100,12 @@ def import_module():
             spec = importlib.util.spec_from_file_location('tmp', tmp.name)
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
-        
-        globals()["import_module"] = module.import_module
+
+            proxy_modules = analyze_func_and_create_proxies(module.import_module)
+            import_module = parsl.python_app(module.import_module)
+            import_module = functools.partial(import_module, modules=proxy_modules)
+            globals()["import_module"] = import_module
+            
         return
 
 def cleanup(module_name: str, method: str = "file_system", nodes: int = 1) -> None:

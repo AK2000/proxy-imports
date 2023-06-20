@@ -3,12 +3,15 @@ import importlib
 import inspect
 import io
 import os
+import os.path
+import shutil
 import subprocess
 import sys
 import tarfile
 from types import ModuleType
 from typing import Optional, Any, Union
 from pathlib import Path
+import zipfile
 
 from.proxy_config import read_config
 
@@ -21,21 +24,21 @@ from PyInstaller.compat import is_pure_conda
 
 def _serialize_module(m: ModuleType) -> dict[str, bytes]:
     """ Method used to turn module into serialized bitstring"""
+    
     try:
         module_path = inspect.getfile(m)
         if os.path.basename(module_path) == "__init__.py":
             module_path = Path(module_path).parent.absolute()
     except:
         module_path = m.__path__[0]
-        
-    tar = io.BytesIO()
 
-    with tarfile.open(fileobj=tar, mode="w|") as f:
-        f.add(module_path, arcname=os.path.basename(module_path))
+    module_buffer = io.BytesIO()
+    with tarfile.open(fileobj=module_buffer, mode="w") as f:
+        f. add(module_path, arcname=os.path.basename(module_path))
 
     # Convert to string so can easily serialize
-    module_tar = tar.getvalue()
-    tar.close()
+    module_bytes = module_buffer.getvalue()
+    module_buffer.close()
 
     # Possible solution for libraries, but seems to be overly inclusive?
     libraries = collect_dynamic_libs(m.__name__)
@@ -45,19 +48,20 @@ def _serialize_module(m: ModuleType) -> dict[str, bytes]:
         except ModuleNotFoundError:
             print(f"{m.__name__} is not a conda package or was not installed with conda. Cannot find all shared libraries.")
 
-    tar = io.BytesIO()
-    with tarfile.open(fileobj=tar, mode="w|") as f:
+    library_buffer = io.BytesIO()
+    with tarfile.open(fileobj=library_buffer, mode="w|") as f:
         for path, _ in libraries:
             f.add(path, arcname=os.path.basename(path))
+
     # Convert to string so can easily serialize
-    library_tar = tar.getvalue()
-    tar.close()
+    library_bytes = library_buffer.getvalue()
+    library_buffer.close()
 
     print(f"Serialize: {m.__name__}")
-    print(f"\tmodule tar file length: {len(module_tar)}")
-    print(f"\tlibrary tar file length: {len(library_tar)}")
+    print(f"\tmodule zip file length: {len(module_bytes)}")
+    print(f"\tlibrary zip file length: {len(library_bytes)}")
 
-    return {"module": module_tar, "libraries": library_tar}
+    return {"module": module_bytes, "libraries": library_bytes}
 
 def load_config(config: Optional[Union[dict[str, Any], str]] = None):
     if config is None or type(config) == str:
@@ -149,4 +153,4 @@ def analyze_func_and_create_proxies(func, config: Optional[Union[dict[str, Any],
     if func_module and func_module.__name__ != "__main__":
         imports.add(_strip_dots(func_module.__name__))
     
-    return store_modules(list(imports), config)
+    return store_modules(list(imports), config=config)

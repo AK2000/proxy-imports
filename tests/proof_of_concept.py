@@ -9,11 +9,12 @@ from pathlib import Path
 import multiprocessing
 
 from proxy_imports import proxy_transform, analyze_func_and_create_proxies, ProxyImporter
-package_path = "proxied-site-packages"
+package_path = "/dev/shm/proxied-site-packages"
 
 def test_func():
-    import numpy
-    return numpy.random.rand(10)
+    import tensorflow
+    tensorflow.__wrapped__
+    return "Executed test function"
 
 def get_transformed_function(queue : multiprocessing.Queue):
     proxies = analyze_func_and_create_proxies(test_func)
