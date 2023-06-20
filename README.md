@@ -1,25 +1,25 @@
-# Lazy Imports
+# Proxy Imports
 
-A simple proof-of-concept example where ProxyStore is used to lazily import modules at runtime.
+A pure library to analyze distributed functions, determine their dependencies, then package and move them to a remote endpoing for function execution
 
 ### Dependencies
-- conda
-- numpy
-- proxystore
-- tensorflow
+- dill >= 0.3.6
+- proxystore >= 0.5.1
 - PyInstaller
 
 
-### How to install
-To set up the necessary environments, run `source install.sh` which will create 2 conda environments in the current directory. Currently proxystore (https://github.com/proxystore/proxystore) has to to be installed from source into the test environment. The hope is that this that the proxystore PyPI wheel gets updated.
+### Installation
+```bash
+$ git clone git@github.com:AK2000/lazy-imports.git
+$ cd lazy-imports
+$ pip install .
+```
 
-To set up the environment after the initial installation, run `source setup.sh`. 
-
-Once the environments are set up, you can run `pip install -e .` from the root of the project directory. 
+To configure the default ProxyStore backend to use when storing modules, and the location to place incoming packages, run 
+```bash
+$ proxy-imports-init 
+```
+which will create a default configuration file at `~/.proxy_modules/config.py`. This file should be edited for system and user specific options.
 
 ### How to run
-To run a simple proof of concept:
-`python proof_of_concept.py`
-
-Larger experiment scripts are in `experiments/`. For example, to run the scaling experiments on Perlmutter,
-you can use `experiments/submit.sh`
+Samples are coming soon. To reproduce the results in the paper see the documentation in `benchmarks/`.
