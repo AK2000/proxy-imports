@@ -8,7 +8,7 @@ $ bash install.sh
 ```
 This command may take a while (sometime nearly an hour) to resolve the environment. After it's finished, there will be two new conda environments created in this folder. `base_env` is a environment with minimal dependencies. It will be used with the `conda-pack` solution to create new environments with a subset of the packages. `test_env` will be the working conda environment where we run our experiments.
 
-Two other packages must be installed from source in the test env. To activate the test environment, run  First install Proxy Imports following the directions in the root of this repository. Then install a modified version of Parsl for the benchmarks:
+Two other packages must be installed from source in the test env. First install Proxy Imports following the directions in the root of this repository. Then install a modified version of Parsl for the benchmarks:
 
 ```bash
 $ export TEST_ENV=`pwd -P`/test_env
