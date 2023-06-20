@@ -16,7 +16,8 @@ classifiers = [
 ]
 dependencies = [
     "pyinstaller",
-    "proxystore"
+    "proxystore >= 0.5.1",
+    "dill >= 0.3.6"
 ]
 dynamic = ["version"]
 
