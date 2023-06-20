@@ -52,7 +52,7 @@ def create_package(name: str, nfolders: int, level: int, path: str = "./", nfile
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("nfolders", type=int, help="Number of files to include in simulated package")
-    parser.add_argument("--files", type=int, default=100, help="Number of files per subfolder")
+    parser.add_argument("--files", type=int, default=1000, help="Number of files per subfolder")
     parser.add_argument("--name", type=str, default="sim_pack", help="Name of package")
     parser.add_argument("--path", type=str, default="./", help="Path to put package at")
     opts = parser.parse_args()

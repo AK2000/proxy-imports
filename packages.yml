@@ -1,7 +1,7 @@
 dependencies:
   - conda-forge::rdkit
   - conda-forge::xtb-python
-  - numpy
+  - numpy<1.24
   - pandas
   - scikit-learn
   - conda-forge::py-cpuinfo
@@ -11,5 +11,7 @@ dependencies:
 
   - pip
   - pip:
-    - tensorflow
     - ase
+    - tensorflow
+    - tensorflow-datasets
+    - tensorflow-hub
